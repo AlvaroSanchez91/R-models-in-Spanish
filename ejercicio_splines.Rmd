@@ -1,0 +1,978 @@
+---
+title: "Ejercicio AEMOD, Regresión a través de splines."
+author: "Álvaro Sánchez Castañeda"
+date: "22 de febrero de 2017"
+output: md_document
+---
+
+##Ejercicio 1
+1) Con el fichero Auto de la librería ISLR:
+a) Seleccionar los vehículos con mpg>=13
+b) Proponer un modelo que identifique qué variables influyen en la nueva variable de conteo: m_13=round(mpg-13).
+
+
+Carguemos los datos y hagamos un pequeño analisis exploratorio.
+```{r}
+library(ISLR)
+data("Auto")
+head(Auto)
+dim(Auto)
+summary(Auto)
+plot(Auto$mpg)
+```
+
+Ahora transformemolos tal como indica el ejercicio.
+```{r}
+datos=Auto[which(Auto$mpg>= 13),]#Quitamos los datos con mpg<13.
+datos=cbind(datos, m_13=round(datos$mpg-13))#Discretizamos mpg.
+datos=datos[,c(-9,-1)]#Borramos los nombres de los vehiculos y mpg.
+```
+
+Dado que m_13 es una variable de conteo, tratemos de averiguar si es mas conveniente usar un modelo de poisson o una binomial negativa (para el modelo de poisson, las esperanzas condicionadas deben coincidir con las varianzas condicionadas, el problema es que es dificil de verlo graficamente). Para decidir, haremos el siguiente contraste (se basa en que las devianzas siguen una chi cuadrado):
+```{r}
+require(MASS)
+m1 <- glm(m_13 ~ ., family="poisson", data=datos)
+m1_bn <-  glm.nb(m_13 ~ ., data=datos)
+
+X2 <-   2 *(logLik(m1_bn) - logLik(m1))
+X2
+pchisq(X2, df = 1, lower.tail=FALSE)
+```
+Al construir el modelo de la binomial negativa, el propio programa nos avisa que ha alcanzado el numero de iteraciones maximo estimando un parametro que no tiene la poisson. El modelo de poisson se puede interpretar como uno binomial negativo, con dicho parametro (theta) igual a infinito, luego este warning da lugar a pensar que ambos modelos son muy similares. De hecho, al restar las devianzas, se aproximan tanto que obtenemos un valor negativo (por un error numerico). Deducimos que la resta vale cero (de la devianza de el modelo de poisson menos el de la binomial negativa), y evidentemente tenemos un contraste con un p-valor mas o menos igual a uno. De modo que elegiremos el modelo de poisson para nuestro ejercicio.
+
+ Veamos que variables son significativas en el modelo m1:
+
+```{r}
+summary(m1)
+```
+
+ Aparentemente, las variables a tener en cuenta deben ser: year, weight, horsepower y displacement. De todas formas, podemos ver una a una si mejora el modelo cuando se incluyen las variables pues puede ser que, aunque una variable no influya en el modelo, si que influya a nuestra variable objetivo (el ejercicio indica que busquemos las variables afectan significativamente a la variable objetivo, no al modelo). Por ejemplo, puede ser que la aceleración no sea significativa (alto p-valor de la hipotesis nula), pero que esto se deba a que la aceleración esta explicada por el peso y la potencia. Definamos modelos con una única variable predictora. 
+
+```{r}
+summary(m_cylinders <- glm(m_13 ~  cylinders, family="poisson", data=datos))
+```
+La variable cylinders es significativa.
+
+```{r}
+summary(m_displacement <- glm(m_13 ~  displacement, family="poisson", data=datos))
+```
+
+La variable displacement es significativa.
+
+```{r}
+summary(m_horsepower <- glm(m_13 ~  horsepower, family="poisson", data=datos))
+```
+
+La variable horsepower es significativa.
+```{r}
+summary(m_weight <- glm(m_13 ~  weight, family="poisson", data=datos))
+```
+
+La variable weight es significativa.
+```{r}
+summary(m_acceleration <- glm(m_13 ~  acceleration, family="poisson", data=datos))
+```
+
+La variable acceleration es significativa.
+```{r}
+summary(m_year <- glm(m_13 ~  year, family="poisson", data=datos))
+```
+
+La variable year es significativa.
+```{r}
+summary(m_origin <- glm(m_13 ~  origin, family="poisson", data=datos))
+```
+
+La variable origin es significativa, luego todas las variables influyen (a nivel de sifnificación del 0.95).
+
+
+
+
+
+
+##Ejercicio 2.
+
+ Comenzamos cargando los datos y veamos la cabecera de estos.
+ 
+```{r}
+data("College")
+datos2=College
+head(datos2)
+dim(datos2)
+library (gam)
+```
+
+ Podemos construir un modelo completo, añadiendo paso a paso la mejor opccion (polinomio, spline,...) para cada variable.
+ 
+###Variable Private.
+ 
+```{r}
+mod1=lm(Grad.Rate~ Private, data = datos2)
+summary(mod1)
+plot(cbind(datos2$Grad.Rate,datos2$Private))
+```
+Codifica privada y no privada con 2 y 1 respectivamente. Creemos a mano una variable dummy.
+```{r}
+datos2=within(datos2, Private<-as.numeric(datos2$Private)-1)
+mod1=gam(Grad.Rate~ Private, data = datos2)
+plot(cbind(datos2$Private,datos2$Grad.Rate))
+lines(rbind(datos2[1,],datos2['Angelo State University',])$Private,predict(mod1, newdata=rbind(datos2[1,],datos2['Angelo State University',])), col='red')
+datos2[datos2$Grad.Rate>100,]
+```
+
+Tenemos un dato con un ratio de graduados demasiado grande. Unicamente con esta variable, el modelo no se puede mejorar (solo da la media en los dos casos posibles). Vamos a ir añadiendo las funciones regresoras que consideremos para cada variable a un modelo completo gam.
+
+
+```{r}
+modc1=gam(Grad.Rate~ Private, data = datos2)
+summary(modc1)
+```
+ Private es significativa.
+ 
+###Variable Apps.
+ Vamos a usar la notacion modn.k para crear un modelo usando polinomios de grado k, en la variable n-esima.
+```{r}
+mod2=lm(Grad.Rate~ Apps, data = datos2)
+mod2.2=lm(Grad.Rate~ poly(Apps,2), data = datos2)
+mod2.3=lm(Grad.Rate~ poly(Apps,3), data = datos2)
+mod2.4=lm(Grad.Rate~ poly(Apps,4), data = datos2)
+summary(mod2)
+summary(mod2.2)
+summary(mod2.3)
+summary(mod2.4)
+anova(mod2,mod2.2,mod2.3,mod2.4)
+```
+Parece que no se descarta que sean iguales los modelos excepto para grado cuatro. Veamos graficamente como son estas funciones regresoras.
+
+```{r}
+plot(cbind(datos2$Apps,datos2$Grad.Rate))
+#podemos crear unos datos falsos para pintar nuestra regresion
+datos_falsos=data.frame(Apps=seq(0, 50000, 100))
+lines(cbind(datos_falsos$Apps,predict(mod2,newdata = datos_falsos)), col='red')
+lines(cbind(datos_falsos$Apps,predict(mod2.2,newdata = datos_falsos)), col='blue')
+lines(cbind(datos_falsos$Apps,predict(mod2.3,newdata = datos_falsos)), col='orange')
+lines(cbind(datos_falsos$Apps,predict(mod2.4,newdata = datos_falsos)), col='green')
+```
+
+Naturalmente, descartamos el uso de polinomios de grado cuatro, ya que se sale de los valores posibles de la variable, Por lo demas, son muy parecidas el resto de funciones (con anova no descartabamos esto). Tambien se ve que no tenemos varianzas constantes (lo cual daria lugar a replantearnos este modelo lineal). De todas formas no parece necesario tratar de mejorar esto.
+
+```{r}
+modc2=gam(Grad.Rate~ Private+Apps, data = datos2)
+anova(modc1,modc2)
+summary(modc1)
+summary(modc2)
+```
+
+Naturalmente tenemos una mejoria en el modelo completo.
+
+###Variable Accept.
+
+```{r}
+mod3=lm(Grad.Rate~ Accept, data = datos2)
+mod3.2=lm(Grad.Rate~ poly( Accept,2), data = datos2)
+mod3.3=lm(Grad.Rate~ poly( Accept,3), data = datos2)
+mod3.4=lm(Grad.Rate~ poly( Accept,4), data = datos2)
+summary(mod3)
+summary(mod3.2)
+summary(mod3.3)
+summary(mod3.4)
+anova(mod3, mod3.2, mod3.3, mod3.4)
+```
+
+ Solo descarta la asumcion de que los modelos son iguales para grados 3 y 4
+```{r}
+plot(cbind(datos2$Accept,datos2$Grad.Rate))
+datos_falsos=data.frame(Accept=seq(0, 25000, 100))
+lines(cbind(datos_falsos$Accept,predict(mod3,newdata = datos_falsos)), col='red')
+lines(cbind(datos_falsos$Accept,predict(mod3.2,newdata = datos_falsos)), col='blue')
+lines(cbind(datos_falsos$Accept,predict(mod3.3,newdata = datos_falsos)), col='orange')
+lines(cbind(datos_falsos$Accept,predict(mod3.4,newdata = datos_falsos)), col='green')
+```
+ Parece que para grados 3 y cuatro lo que tenemos es un sobreajuste, no es conveniente usar dichos modelos. No hay ningun indicio que nos lleve a pensar en splines, pero tal vez podriamos probar algunos. Usaremos notacion similar a la usada hasta ahora, modn.sk (s indica splines suavizados, bs splines cubicos, ns splines naturales).
+ 
+ 
+```{r}
+library (splines)
+mod3.s=smooth.spline(datos2$Grad.Rate, datos2$Accept)
+mod3.s$df #se calcula por medio de cv
+```
+ Para seguir dibujando las graficas de los predicctores tal como lo estabamos haciendo hasta ahora, construimos este ultimo modelo atraves de un gam.
+ 
+```{r}
+mod3.s=gam(Grad.Rate~ s(Accept, mod3.s$df), data = datos2)
+mod3.s5=gam(Grad.Rate~ s(Accept, 5), data = datos2)
+plot(cbind(datos2$Accept,datos2$Grad.Rate))
+lines(cbind(datos_falsos$Accept,predict(mod3.s,newdata = datos_falsos)), col='purple')
+lines(cbind(datos_falsos$Accept,predict(mod3.s5,newdata = datos_falsos)), col='yellow')
+summary(mod3.s)
+summary(mod3.s5)
+```
+
+Como es natural, los errores son menores a mayor grado de libertad (sobre datos de entrenamiento). Pero haciendo validacion cruzada, da mejor resultado un grado de libertad muy bajo para el spline suavizado. Veamos el error cuadratico sin estandarizar del modelo lineal simple para esta variable.
+
+```{r}
+summary(gam(Grad.Rate~ Accept, data = datos2))
+```
+
+No tenemos mucha diferencia con los splines suavizados, parece que no merece la pena elegir algo distinto.
+
+```{r}
+modc3=gam(Grad.Rate~ Private+Apps+Accept, data = datos2)
+modc3.2=gam(Grad.Rate~ Private+Apps+poly( Accept,2), data = datos2)
+modc3.3=gam(Grad.Rate~ Private+Apps+poly( Accept,3), data = datos2)
+modc3.s=gam(Grad.Rate ~ Private +Apps+s(Accept), data = datos2)
+modc3.s5=gam(Grad.Rate ~ Private +Apps+s(Accept,5), data = datos2)
+anova(modc2,modc3,modc3.2,modc3.3)
+summary(modc3)
+summary(modc3.2)
+summary_borrar=summary(modc3.3)
+summary(modc3.s)
+summary(modc3.s5)
+```
+
+Podemos crear una lista con los modelos para construir una tabla con la que comparar los errores, y definir funciones que trabajen sobre esa lista.
+
+```{r}
+modelosc3=list(modc3=modc3,modc3.2=modc3.2,modc3.3=modc3.3,modc3.s=modc3.s,modc3.s5=modc3.s5)
+
+ecm=function(m){
+  error=sum(m$residuals ^2)/length(m$residuals)
+  return(error)
+}
+errores_tab=function(m_list){
+  tab=data.frame()
+  for (i in 1:length(m_list)){
+    tab[1,i]=ecm(m_list[[i]])
+    tab[2,i]=m_list[[i]]$deviance
+    tab[3,i]=m_list[[i]]$aic
+  }
+  names(tab)=names(m_list)
+  rownames(tab)=c("ecm","deviance","aic")
+  return(tab)
+}
+errores_tab(modelosc3)
+```
+
+ Parece entonces que lo mejor es tomar splines suavizados.
+ 
+```{r}
+modc3=modc3.s
+```
+
+###Variable Enroll.
+```{r}
+mod4=gam(Grad.Rate~ Enroll, data = datos2)
+mod4.2=gam(Grad.Rate~ poly(Enroll,2), data = datos2)
+mod4.3=gam(Grad.Rate~ poly(Enroll,3), data = datos2)
+mod4.4=gam(Grad.Rate~ poly(Enroll,4), data = datos2)
+mod4.s=gam(Grad.Rate~ s(Enroll), data = datos2)
+mod4.s5=gam(Grad.Rate~ s(Enroll,5), data = datos2)
+
+summary(mod4)
+summary(mod4.2)
+summary(mod4.3)
+summary(mod4.4)
+summary(mod4.s)
+summary(mod4.s5)
+anova(mod4,mod4.2,mod4.3,mod4.3)
+anova(mod4,mod4.s)
+anova(mod4,mod4.s5)
+
+plot(cbind(datos2$Enroll,datos2$Grad.Rate))
+datos_falsos=data.frame(Enroll=seq(0, 6000, 100))
+lines(cbind(datos_falsos$Enroll,predict(mod4,newdata = datos_falsos)), col='red')
+lines(cbind(datos_falsos$Enroll,predict(mod4.2,newdata = datos_falsos)), col='blue')
+lines(cbind(datos_falsos$Enroll,predict(mod4.3,newdata = datos_falsos)), col='green')
+lines(cbind(datos_falsos$Enroll,predict(mod4.4,newdata = datos_falsos)), col='orange')
+lines(cbind(datos_falsos$Enroll,predict(mod4.s,newdata = datos_falsos)), col='purple')
+lines(cbind(datos_falsos$Enroll,predict(mod4.s5,newdata = datos_falsos)), col='yellow')
+```
+
+Parece que lo mejor es usar polinomios de grado 3 o splines.
+```{r}
+modc4=gam(Grad.Rate~ Private+Apps+s( Accept)+Enroll, data = datos2)
+modc4.2=gam(Grad.Rate~ Private+Apps+s( Accept)+poly(Enroll,2), data = datos2)
+modc4.3=gam(Grad.Rate~ Private+Apps+s( Accept)+poly(Enroll,3), data = datos2)
+modc4.4=gam(Grad.Rate~ Private+Apps+s( Accept)+poly(Enroll,4), data = datos2)
+modc4.s=gam(Grad.Rate~ Private+Apps+s( Accept)+s(Enroll), data = datos2)
+modc4.s5=gam(Grad.Rate~ Private+Apps+s( Accept)+s(Enroll,5), data = datos2)
+
+summary(modc3)
+summary(modc4)
+summary(modc4.2)
+summary(modc4.3)
+summary(modc4.4)
+summary(modc4.s)
+summary(modc4.s5)
+anova(modc3,modc4,modc4.2,modc4.3,modc4.4)
+errores_tab(list(modc3,modc4,modc4.2,modc4.3,modc4.4, modc4.s,modc4.s5))
+```
+
+Parece razonable volver a tomar splines suavizados.
+
+```{r}
+modc4=modc4.s
+```
+
+###Variable Top10perc.
+
+```{r}
+mod5=gam(Grad.Rate~ Top10perc, data = datos2)
+mod5.2=gam(Grad.Rate~ poly(Top10perc,2), data = datos2)
+mod5.3=gam(Grad.Rate~ poly(Top10perc,3), data = datos2)
+mod5.4=gam(Grad.Rate~ poly(Top10perc,4), data = datos2)
+mod5.s=gam(Grad.Rate~ Top10perc+s(Top10perc), data = datos2)
+mod5.s5=gam(Grad.Rate~ Top10perc+s(Top10perc,5), data = datos2)
+mod5.s10=gam(Grad.Rate~ Top10perc+s(Top10perc,10), data = datos2)
+
+
+summary(mod5)
+summary(mod5.2)
+summary(mod5.3)
+summary(mod5.4)
+summary(mod5.s)
+summary(mod5.s5)
+summary(mod5.s10)
+anova(mod5,mod5.2,mod5.3,mod5.4)
+errores_tab(list(mod5,mod5.2,mod5.3,mod5.4,mod5.s,mod5.s5,mod5.s10))
+
+plot(cbind(datos2$Top10perc,datos2$Grad.Rate))
+datos_falsos=data.frame(Top10perc=seq(0, 100, 1))
+lines(cbind(datos_falsos$Top10perc,predict(mod5,newdata = datos_falsos)), col='red')
+lines(cbind(datos_falsos$Enroll,predict(mod5.2,newdata = datos_falsos)), col='blue')
+lines(cbind(datos_falsos$Top10perc,predict(mod5.3,newdata = datos_falsos)), col='green')
+lines(cbind(datos_falsos$Top10perc,predict(mod5.s,newdata = datos_falsos)), col='yellow')
+lines(cbind(datos_falsos$Top10perc,predict(mod5.s5,newdata = datos_falsos)), col='orange')
+
+modc5=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+Top10perc, data = datos2)
+modc5.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+poly(Top10perc,2), data = datos2)
+modc5.3=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+poly(Top10perc,3), data = datos2)
+modc5.4=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+poly(Top10perc,4), data = datos2)
+modc5.s=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc), data = datos2)
+modc5.s5=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc,5), data = datos2)
+modc5.s10=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc,10), data = datos2)
+errores_tab(list(modc5,modc5.2,modc5.3,modc5.4,modc5.s,modc5.s5,modc5.s10))
+```
+Mirando el aic, una buena opcion parece que seria tomar splines suavizados.
+```{r}
+modc5=modc5.s
+```
+
+###Variable Top25perc.
+
+```{r}
+mod6=gam(Grad.Rate~ Top25perc, data = datos2)
+mod6.2=gam(Grad.Rate~ poly(Top25perc,2), data = datos2)
+mod6.3=gam(Grad.Rate~ poly(Top25perc,3), data = datos2)
+mod6.4=gam(Grad.Rate~ poly(Top25perc,4), data = datos2)
+mod6.s=gam(Grad.Rate~ s(Top25perc), data = datos2)
+mod6.s5=gam(Grad.Rate~ s(Top25perc,5), data = datos2)
+mod6.s10=gam(Grad.Rate~ s(Top25perc,10), data = datos2)
+
+summary(mod6)
+summary(mod6.2)
+summary(mod6.3)
+summary(mod6.4)
+summary(mod6.s)
+summary(mod6.s5)
+summary(mod6.s10)
+anova(mod6,mod6.2,mod6.3,mod6.4)
+errores_tab(list(mod6,mod6.2,mod6.3,mod6.4,mod6.s,mod6.s5,mod6.s10))
+
+plot(cbind(datos2$Top25perc,datos2$Grad.Rate))
+datos_falsos=data.frame(Top25perc=seq(0, 100, 1))
+lines(cbind(datos_falsos$Top25perc,predict(mod6,newdata = datos_falsos)), col='red')
+lines(cbind(datos_falsos$Top25perc,predict(mod6.2,newdata = datos_falsos)), col='blue')
+lines(cbind(datos_falsos$Top25perc,predict(mod6.3,newdata = datos_falsos)), col='green')
+lines(cbind(datos_falsos$Top25perc,predict(mod6.4,newdata = datos_falsos)), col='yellow')
+lines(cbind(datos_falsos$Top25perc,predict(mod6.s,newdata = datos_falsos)), col='orange')
+lines(cbind(datos_falsos$Top25perc,predict(mod6.s5,newdata = datos_falsos)), col='purple')
+lines(cbind(datos_falsos$Top25perc,predict(mod6.s10,newdata = datos_falsos)), col='pink')
+
+```
+
+A la vista de los datos, tal vez tenga sentido usar un spline con un nodo de manera que diferencie los datos con valores muy bajos de Top25perc (esto tiene sentido, pues tendremos peores estudiantes en la correspondiente universidad).
+
+```{r}
+mod6.bs=gam(Grad.Rate~ bs(Top25perc ,knots =c(30) ), data = datos2)
+summary(mod6.bs)
+errores_tab(list(mod6,mod6.2,mod6.3,mod6.4,mod6.s,mod6.s5,mod6.s10,mod6.bs))
+plot(cbind(datos2$Top25perc,datos2$Grad.Rate))
+lines(cbind(datos_falsos$Enroll,predict(mod6.bs,newdata = datos_falsos)), col='red')
+lines(cbind(datos_falsos$Top25perc,predict(mod6.s,newdata = datos_falsos)), col='orange')
+```
+
+ Todo indica que es mejor usar el spline suavizado, que el que acabamos de construir. Ademas, tiene mejores propiedades (intervalos de confianza), pero tiene sentido forzar en este caso el modelo.
+ 
+ 
+ 
+```{r}
+modc6=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + Top25perc, data = datos2)
+modc6.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + poly(Top25perc,2), data = datos2)
+modc6.3=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + poly(Top25perc,3), data = datos2)
+modc6.4=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + poly(Top25perc,4), data = datos2)
+modc6.s=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + s(Top25perc), data = datos2)
+modc6.bs=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) ), data = datos2)
+errores_tab(list(modc6,modc6.2,modc6.3,modc6.4,modc6.s,modc6.bs))
+```
+Tomemos el modelo con el nudo fijado.
+
+```{r}
+modc6=modc6.bs
+```
+
+###Variable F.Undergrad.
+
+```{r}
+summary(datos2$F.Undergrad)
+mod7=gam(Grad.Rate~ F.Undergrad, data = datos2)
+mod7.2=gam(Grad.Rate~ poly(F.Undergrad,2), data = datos2)
+mod7.3=gam(Grad.Rate~ poly(F.Undergrad,3), data = datos2)
+mod7.4=gam(Grad.Rate~ poly(F.Undergrad,4), data = datos2)
+mod7.s=gam(Grad.Rate~ s(F.Undergrad), data = datos2)
+mod7.s5=gam(Grad.Rate~ s(F.Undergrad,5), data = datos2)
+mod7.s10=gam(Grad.Rate~ s(F.Undergrad,10), data = datos2)
+
+summary(mod7)
+summary(mod7.2)
+summary(mod7.3)
+summary(mod7.4)
+summary(mod7.s)
+summary(mod7.s5)
+summary(mod7.s10)
+anova(mod7,mod7.2,mod7.3,mod7.4)
+errores_tab(list(mod7,mod7.2,mod7.3,mod7.4,mod7.s,mod7.s5,mod7.s10))
+
+plot(cbind(datos2$F.Undergrad,datos2$Grad.Rate))
+datos_falsos=data.frame(F.Undergrad=seq(0, 32000, 100))
+lines(cbind(datos_falsos$F.Undergrad,predict(mod7,newdata = datos_falsos)), col='red')
+lines(cbind(datos_falsos$F.Undergrad,predict(mod7.2,newdata = datos_falsos)), col='blue')
+lines(cbind(datos_falsos$F.Undergrad,predict(mod7.3,newdata = datos_falsos)), col='green')
+lines(cbind(datos_falsos$F.Undergrad,predict(mod7.4,newdata = datos_falsos)), col='yellow')
+lines(cbind(datos_falsos$F.Undergrad,predict(mod7.s,newdata = datos_falsos)), col='orange')
+lines(cbind(datos_falsos$F.Undergrad,predict(mod7.s5,newdata = datos_falsos)), col='purple')
+lines(cbind(datos_falsos$F.Undergrad,predict(mod7.s10,newdata = datos_falsos)), col='pink')
+
+modc7=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+F.Undergrad, data = datos2)
+modc7.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+ poly(F.Undergrad,2), data = datos2)
+modc7.3=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+poly(F.Undergrad,3), data = datos2)
+modc7.4=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+poly(F.Undergrad,4), data = datos2)
+modc7.s=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad), data = datos2)
+modc7.s5=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad,5), data = datos2)
+modc7.s10=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad,10), data = datos2)
+
+errores_tab(list(modc7,modc7.2,modc7.3,modc7.4,modc7.s,modc7.s5, modc7.s10))
+```
+Volvemos a encontrarnos con errores similares, pero volveremos a usar splines suavizados.
+
+```{r}
+modc7=modc7.s
+```
+
+
+###Variable P.Undergrad.
+
+```{r}
+summary(datos2$P.Undergrad)
+mod8=gam(Grad.Rate~ P.Undergrad, data = datos2)
+mod8.2=gam(Grad.Rate~ poly(P.Undergrad,2), data = datos2)
+mod8.3=gam(Grad.Rate~ poly(P.Undergrad,3), data = datos2)
+mod8.4=gam(Grad.Rate~ poly(P.Undergrad,4), data = datos2)
+mod8.s=gam(Grad.Rate~ s(P.Undergrad), data = datos2)
+mod8.s5=gam(Grad.Rate~ s(P.Undergrad,5), data = datos2)
+mod8.s10=gam(Grad.Rate~ s(P.Undergrad,10), data = datos2)
+
+summary(mod8)
+summary(mod8.2)
+summary(mod8.3)
+summary(mod8.4)
+summary(mod8.s)
+summary(mod8.s5)
+summary(mod8.s10)
+anova(mod8,mod8.2,mod8.3,mod8.4)
+errores_tab(list(mod8,mod8.2,mod8.3,mod8.4,mod8.s,mod8.s5,mod8.s10))
+```
+Quizas escojamos la regresion por medio de polinomios de grado dos.
+```{r}
+
+plot(cbind(datos2$P.Undergrad,datos2$Grad.Rate))
+datos_falsos=data.frame(P.Undergrad=seq(0, 30000, 100))
+lines(cbind(datos_falsos$P.Undergrad,predict(mod8,newdata = datos_falsos)), col='red')
+lines(cbind(datos_falsos$P.Undergrad,predict(mod8.2,newdata = datos_falsos)), col='blue')
+lines(cbind(datos_falsos$P.Undergrad,predict(mod8.3,newdata = datos_falsos)), col='green')
+lines(cbind(datos_falsos$P.Undergrad,predict(mod8.4,newdata = datos_falsos)), col='yellow')
+lines(cbind(datos_falsos$P.Undergrad,predict(mod8.s,newdata = datos_falsos)), col='orange')
+lines(cbind(datos_falsos$P.Undergrad,predict(mod8.s5,newdata = datos_falsos)), col='purple')
+lines(cbind(datos_falsos$P.Undergrad,predict(mod8.s10,newdata = datos_falsos)), col='pink')
+
+modc8=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) +P.Undergrad, data = datos2)
+modc8.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2), data = datos2)
+modc8.3=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,3), data = datos2)
+modc8.4=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) +poly(P.Undergrad,4), data = datos2)
+modc8.s=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) +s(P.Undergrad), data = datos2)
+modc8.s5=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) +s(P.Undergrad,5), data = datos2)
+modc8.s10=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) +s(P.Undergrad,10), data = datos2)
+errores_tab(list(modc8,modc8.2,modc8.3,modc8.4,modc8.s,modc8.s5,modc8.s10))
+```
+Dada la escasa diferencia de error entre usar polinomios de grado dos o splines podemos decantarnos por los polinomios por su baja complejidad.
+
+```{r}
+anova(modc7,modc8,modc8.2,modc8.3,modc8.4)
+```
+Curiosamente, no se descarta que sean iguales los dos primeros modelos. Aun asi, hay una gran escasez de datos entre 10000 y 20000, y usar un regresor lineal simple puede dar valores extraños en ese intervalo.
+
+```{r}
+modc8=modc8.2
+```
+
+
+###Variable Outstate.
+
+```{r}
+
+summary(datos2$Outstate)
+mod9=gam(Grad.Rate~ Outstate, data = datos2)
+mod9.2=gam(Grad.Rate~ poly(Outstate,2), data = datos2)
+mod9.3=gam(Grad.Rate~ poly(Outstate,3), data = datos2)
+mod9.4=gam(Grad.Rate~ poly(Outstate,4), data = datos2)
+mod9.s=gam(Grad.Rate~ s(Outstate), data = datos2)
+mod9.s5=gam(Grad.Rate~ s(Outstate,5), data = datos2)
+mod9.s10=gam(Grad.Rate~ s(Outstate,10), data = datos2)
+
+summary(mod9)
+summary(mod9.2)
+summary(mod9.3)
+summary(mod9.4)
+summary(mod9.s)
+summary(mod9.s5)
+summary(mod9.s10)
+anova(mod9,mod9.2,mod9.3,mod9.4)
+errores_tab(list(mod9,mod9.2,mod9.3,mod9.4,mod9.s,mod9.s5,mod9.s10))
+
+plot(cbind(datos2$Outstate,datos2$Grad.Rate))
+datos_falsos=data.frame(Outstate=seq(0, 30000, 100))
+lines(cbind(datos_falsos$Outstate,predict(mod9,newdata = datos_falsos)), col='red')
+lines(cbind(datos_falsos$Outstate,predict(mod9.2,newdata = datos_falsos)), col='blue')
+lines(cbind(datos_falsos$Outstate,predict(mod9.3,newdata = datos_falsos)), col='green')
+lines(cbind(datos_falsos$Outstate,predict(mod9.4,newdata = datos_falsos)), col='yellow')
+lines(cbind(datos_falsos$Outstate,predict(mod9.s,newdata = datos_falsos)), col='orange')
+lines(cbind(datos_falsos$Outstate,predict(mod9.s5,newdata = datos_falsos)), col='purple')
+lines(cbind(datos_falsos$Outstate,predict(mod9.s10,newdata = datos_falsos)), col='pink')
+
+modc9=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate, data = datos2)
+modc9.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +poly(Outstate,2), data = datos2)
+modc9.3=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +poly(Outstate,3), data = datos2)
+modc9.4=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +poly(Outstate,4), data = datos2)
+modc9.s=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +s(Outstate), data = datos2)
+modc9.s5=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +s(Outstate,5), data = datos2)
+modc9.s10=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +s(Outstate,10), data = datos2)
+anova(modc8,modc9,modc9.2,modc9.3,modc9.4)
+errores_tab(list(modc9,modc9.2,modc9.3,modc9.4,modc9.s,modc9.s5,modc9.s10))
+```
+En este caso parece suficiente con añadir la regresion simple.
+
+###Variable Room.Board.
+
+```{r}
+
+summary(datos2$Room.Board)
+mod10=gam(Grad.Rate~ Room.Board, data = datos2)
+mod10.2=gam(Grad.Rate~ poly(Room.Board,2), data = datos2)
+mod10.3=gam(Grad.Rate~ poly(Room.Board,3), data = datos2)
+mod10.4=gam(Grad.Rate~ poly(Room.Board,4), data = datos2)
+mod10.s=gam(Grad.Rate~ s(Room.Board), data = datos2)
+mod10.s5=gam(Grad.Rate~ s(Room.Board,5), data = datos2)
+mod10.s10=gam(Grad.Rate~ s(Room.Board,10), data = datos2)
+
+summary(mod10)
+summary(mod10.2)
+summary(mod10.3)
+summary(mod10.4)
+summary(mod10.s)
+summary(mod10.s5)
+summary(mod10.s10)
+anova(mod10,mod10.2,mod10.3,mod10.4)
+errores_tab(list(mod10,mod10.2,mod10.3,mod10.4,mod10.s,mod10.s5,mod10.s10))
+
+plot(cbind(datos2$Room.Board,datos2$Grad.Rate))
+datos_falsos=data.frame(Room.Board=seq(0, 9000, 10))
+lines(cbind(datos_falsos$Room.Board,predict(mod10,newdata = datos_falsos)), col='red')
+lines(cbind(datos_falsos$Room.Board,predict(mod10.2,newdata = datos_falsos)), col='blue')
+lines(cbind(datos_falsos$Room.Board,predict(mod10.3,newdata = datos_falsos)), col='green')
+lines(cbind(datos_falsos$Room.Board,predict(mod10.4,newdata = datos_falsos)), col='yellow')
+lines(cbind(datos_falsos$Room.Board,predict(mod10.s,newdata = datos_falsos)), col='orange')
+lines(cbind(datos_falsos$Room.Board,predict(mod10.s5,newdata = datos_falsos)), col='purple')
+lines(cbind(datos_falsos$Room.Board,predict(mod10.s10,newdata = datos_falsos)), col='pink')
+
+modc10=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board, data = datos2)
+modc10.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate + poly(Room.Board,2), data = datos2)
+modc10.3=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +poly(Room.Board,3), data = datos2)
+modc10.4=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +poly(Room.Board,4), data = datos2)
+modc10.s=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +s(Room.Board), data = datos2)
+modc10.s5=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate + s(Room.Board,5), data = datos2)
+modc10.s10=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +s(Room.Board,10), data = datos2)
+anova(modc9,modc10,modc10.2,modc10.3,modc10.4)
+errores_tab(list(modc10,modc10.2,modc10.3,modc10.4,modc10.s,modc10.s5,modc10.s10))
+
+
+```
+En este caso, todos los modelos dan resultados muy similares. Solo añadiremos la regresion lineal simple.
+
+### Variable Books.
+```{r}
+summary(datos2$Books)
+mod11=gam(Grad.Rate~ Books, data = datos2)
+mod11.2=gam(Grad.Rate~ poly(Books,2), data = datos2)
+mod11.3=gam(Grad.Rate~ poly(Books,3), data = datos2)
+mod11.4=gam(Grad.Rate~ poly(Books,4), data = datos2)
+mod11.s=gam(Grad.Rate~ s(Books), data = datos2)
+mod11.s5=gam(Grad.Rate~ s(Books,5), data = datos2)
+mod11.s10=gam(Grad.Rate~ s(Books,10), data = datos2)
+
+summary(mod11)
+summary(mod11.2)
+summary(mod11.3)
+summary(mod11.4)
+summary(mod11.s)
+summary(mod11.s5)
+summary(mod11.s10)
+anova(mod11,mod11.2,mod11.3,mod11.4)
+errores_tab(list(mod11,mod11.2,mod11.3,mod11.4,mod11.s,mod11.s5,mod11.s10))
+```
+
+Parece que esta variable no es significativa. Mediante un spline suavizado con df=10, si que podria ser significativa, pero parece que se debe a un sobreajuste.
+```{r}
+
+plot(cbind(datos2$Books,datos2$Grad.Rate))
+datos_falsos=data.frame(Books=seq(0, 2500, 10))
+lines(cbind(datos_falsos$Books,predict(mod11,newdata = datos_falsos)), col='red')
+lines(cbind(datos_falsos$Books,predict(mod11.2,newdata = datos_falsos)), col='blue')
+lines(cbind(datos_falsos$Books,predict(mod11.3,newdata = datos_falsos)), col='green')
+lines(cbind(datos_falsos$Books,predict(mod11.4,newdata = datos_falsos)), col='yellow')
+lines(cbind(datos_falsos$Books,predict(mod11.s,newdata = datos_falsos)), col='orange')
+lines(cbind(datos_falsos$Books,predict(mod11.s5,newdata = datos_falsos)), col='purple')
+lines(cbind(datos_falsos$Books,predict(mod11.s10,newdata = datos_falsos)), col='pink')
+
+modc11=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books, data = datos2)
+modc11.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +poly(Books,2), data = datos2)
+modc11.3=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +poly(Books,3), data = datos2)
+modc11.4=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +poly(Books,4), data = datos2)
+modc11.s=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +s(Books), data = datos2)
+modc11.s5=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +s(Books,5), data = datos2)
+modc11.s10=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +s(Books,10), data = datos2)
+
+anova(modc10,modc11,modc11.2,modc11.3,modc11.4)
+errores_tab(list(modc10,modc11,modc11.2,modc11.3,modc11.4,modc11.s,modc11.s5,modc11.s10))
+
+```
+Sorprendentemente, no se descarta (tabla anova) la mejora del modelo al añadir esta variable. La añadiremos a nuestro modelo, aunque no parezca relevante (es posible que simplemente añadamos ruido).
+
+###Variable Personal.
+
+```{r}
+
+summary(datos2$Personal)
+mod12=gam(Grad.Rate~ Personal, data = datos2)
+mod12.2=gam(Grad.Rate~ poly(Personal,2), data = datos2)
+mod12.3=gam(Grad.Rate~ poly(Personal,3), data = datos2)
+mod12.4=gam(Grad.Rate~ poly(Personal,4), data = datos2)
+mod12.s=gam(Grad.Rate~ s(Personal), data = datos2)
+mod12.s5=gam(Grad.Rate~ s(Personal,5), data = datos2)
+mod12.s10=gam(Grad.Rate~ s(Personal,10), data = datos2)
+
+summary(mod12)
+summary(mod12.2)
+summary(mod12.3)
+summary(mod12.4)
+summary(mod12.s)
+summary(mod12.s5)
+summary(mod12.s10)
+anova(mod12,mod12.2,mod12.3,mod12.4)
+errores_tab(list(mod12,mod12.2,mod12.3,mod12.4,mod12.s,mod12.s5,mod12.s10))
+
+plot(cbind(datos2$Personal,datos2$Grad.Rate))
+datos_falsos=data.frame(Personal=seq(0, 7000, 10))
+lines(cbind(datos_falsos$Personal,predict(mod12,newdata = datos_falsos)), col='red')
+lines(cbind(datos_falsos$Personal,predict(mod12.2,newdata = datos_falsos)), col='blue')
+lines(cbind(datos_falsos$Personal,predict(mod12.3,newdata = datos_falsos)), col='green')
+lines(cbind(datos_falsos$Personal,predict(mod12.4,newdata = datos_falsos)), col='yellow')
+lines(cbind(datos_falsos$Personal,predict(mod12.s,newdata = datos_falsos)), col='orange')
+lines(cbind(datos_falsos$Personal,predict(mod12.s5,newdata = datos_falsos)), col='purple')
+lines(cbind(datos_falsos$Personal,predict(mod12.s10,newdata = datos_falsos)), col='pink')
+
+modc12=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+Personal, data = datos2)
+modc12.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+poly(Personal,2), data = datos2)
+modc12.3=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+poly(Personal,3), data = datos2)
+modc12.4=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+poly(Personal,4), data = datos2)
+modc12.s=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal), data = datos2)
+modc12.s5=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal,5), data = datos2)
+modc12.s10=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal,10), data = datos2)
+
+anova(modc11,modc12,modc12.2,modc12.3,modc12.4)
+errores_tab(list(modc11,modc12,modc12.2,modc12.3,modc12.4,modc12.s,modc12.s5,modc12.s10))
+```
+
+Vistos los aic, usaremos splines suavizados.
+```{r}
+modc12=modc12.s
+```
+
+###Variable PhD.
+
+```{r}
+summary(datos2$PhD)
+mod13=gam(Grad.Rate~ PhD, data = datos2)
+mod13.2=gam(Grad.Rate~ poly(PhD,2), data = datos2)
+mod13.3=gam(Grad.Rate~ poly(PhD,3), data = datos2)
+mod13.4=gam(Grad.Rate~ poly(PhD,4), data = datos2)
+mod13.s=gam(Grad.Rate~ s(PhD), data = datos2)
+mod13.s5=gam(Grad.Rate~ s(PhD,5), data = datos2)
+mod13.s10=gam(Grad.Rate~ s(PhD,10), data = datos2)
+
+summary(mod13)
+summary(mod13.2)
+summary(mod13.3)
+summary(mod13.4)
+summary(mod13.s)
+summary(mod13.s5)
+summary(mod13.s10)
+anova(mod13,mod13.2,mod13.3,mod13.4)
+errores_tab(list(mod12,mod13.2,mod13.3,mod13.4,mod13.s,mod13.s5,mod13.s10))
+
+plot(cbind(datos2$PhD,datos2$Grad.Rate))
+datos_falsos=data.frame(PhD=seq(0, 105, 1))
+lines(cbind(datos_falsos$PhD,predict(mod13,newdata = datos_falsos)), col='red')
+lines(cbind(datos_falsos$PhD,predict(mod13.2,newdata = datos_falsos)), col='blue')
+lines(cbind(datos_falsos$PhD,predict(mod13.3,newdata = datos_falsos)), col='green')
+lines(cbind(datos_falsos$PhD,predict(mod13.4,newdata = datos_falsos)), col='yellow')
+lines(cbind(datos_falsos$PhD,predict(mod13.s,newdata = datos_falsos)), col='orange')
+lines(cbind(datos_falsos$PhD,predict(mod13.s5,newdata = datos_falsos)), col='purple')
+lines(cbind(datos_falsos$PhD,predict(mod13.s10,newdata = datos_falsos)), col='pink')
+
+modc13=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+PhD, data = datos2)
+modc13.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(PhD,2), data = datos2)
+modc13.3=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(PhD,3), data = datos2)
+modc13.4=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(PhD,4), data = datos2)
+modc13.s=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+s(PhD), data = datos2)
+modc13.s5=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+s(PhD,5), data = datos2)
+modc13.s10=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+s(PhD,10), data = datos2)
+
+anova(modc12,modc13,modc13.2,modc13.3,modc13.4)
+errores_tab(list(modc12,modc13,modc13.2,modc13.3,modc13.4,modc13.s,modc13.s5,modc13.s10))
+#Parece que no mejora el modelo aÃ±adiendo esta variable, de manera que no lo haremos.
+modc13=modc12
+
+```
+
+Parece que no mejora el modelo aÃ±adiendo esta variable, de manera que no la añadiremos.
+```{r}
+modc13=modc12
+```
+
+###Variable Terminal.
+
+```{r}
+summary(datos2$Terminal)
+mod14=gam(Grad.Rate~ Terminal, data = datos2)
+mod14.2=gam(Grad.Rate~ poly(Terminal,2), data = datos2)
+mod14.3=gam(Grad.Rate~ poly(Terminal,3), data = datos2)
+mod14.4=gam(Grad.Rate~ poly(Terminal,4), data = datos2)
+mod14.s=gam(Grad.Rate~ s(Terminal), data = datos2)
+mod14.s5=gam(Grad.Rate~ s(Terminal,5), data = datos2)
+mod14.s10=gam(Grad.Rate~ s(Terminal,10), data = datos2)
+
+summary(mod14)
+summary(mod14.2)
+summary(mod14.3)
+summary(mod14.4)
+summary(mod14.s)
+summary(mod14.s5)
+summary(mod14.s10)
+anova(mod14,mod14.2,mod14.3,mod14.4)
+errores_tab(list(mod14,mod14.2,mod14.3,mod14.4,mod14.s,mod14.s5,mod14.s10))
+
+plot(cbind(datos2$Terminal,datos2$Grad.Rate))
+datos_falsos=data.frame(Terminal=seq(0, 100, 1))
+lines(cbind(datos_falsos$Terminal,predict(mod14,newdata = datos_falsos)), col='red')
+lines(cbind(datos_falsos$Terminal,predict(mod14.2,newdata = datos_falsos)), col='blue')
+lines(cbind(datos_falsos$Terminal,predict(mod14.3,newdata = datos_falsos)), col='green')
+lines(cbind(datos_falsos$Terminal,predict(mod14.4,newdata = datos_falsos)), col='yellow')
+lines(cbind(datos_falsos$Terminal,predict(mod14.s,newdata = datos_falsos)), col='orange')
+lines(cbind(datos_falsos$Terminal,predict(mod14.s5,newdata = datos_falsos)), col='purple')
+lines(cbind(datos_falsos$Terminal,predict(mod14.s10,newdata = datos_falsos)), col='pink')
+
+modc14=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+Terminal, data = datos2)
+modc14.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(Terminal,2), data = datos2)
+modc14.3=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(Terminal,3), data = datos2)
+modc14.4=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(Terminal,4), data = datos2)
+modc14.s=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+s(Terminal), data = datos2)
+modc14.s5=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+s(Terminal,5), data = datos2)
+modc14.s10=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+s(Terminal,10), data = datos2)
+
+anova(modc13,modc14,modc14.2,modc14.3,modc14.4)
+errores_tab(list(modc13,modc14,modc14.2,modc14.3,modc14.4,modc14.s,modc14.s5,modc14.s10))
+```
+No es necesario añadir esta variable a nuestro modelo.
+```{r}
+modc14=modc13
+```
+
+###Variable S.F.Ratio.
+
+```{r}
+summary(datos2$S.F.Ratio)
+mod15=gam(Grad.Rate~ S.F.Ratio, data = datos2)
+mod15.2=gam(Grad.Rate~ poly(S.F.Ratio,2), data = datos2)
+mod15.3=gam(Grad.Rate~ poly(S.F.Ratio,3), data = datos2)
+mod15.4=gam(Grad.Rate~ poly(S.F.Ratio,4), data = datos2)
+mod15.s=gam(Grad.Rate~ s(S.F.Ratio), data = datos2)
+mod15.s5=gam(Grad.Rate~ s(S.F.Ratio,5), data = datos2)
+mod15.s10=gam(Grad.Rate~ s(S.F.Ratio,10), data = datos2)
+
+summary(mod15)
+summary(mod15.2)
+summary(mod15.3)
+summary(mod15.4)
+summary(mod15.s)
+summary(mod15.s5)
+summary(mod15.s10)
+anova(mod15,mod15.2,mod15.3,mod15.4)
+errores_tab(list(mod15,mod15.2,mod15.3,mod15.4,mod15.s,mod15.s5,mod15.s10))
+
+plot(cbind(datos2$S.F.Ratio,datos2$Grad.Rate))
+datos_falsos=data.frame(S.F.Ratio=seq(0, 40, 1))
+lines(cbind(datos_falsos$S.F.Ratio,predict(mod15,newdata = datos_falsos)), col='red')
+lines(cbind(datos_falsos$S.F.Ratio,predict(mod15.2,newdata = datos_falsos)), col='blue')
+lines(cbind(datos_falsos$S.F.Ratio,predict(mod15.3,newdata = datos_falsos)), col='green')
+lines(cbind(datos_falsos$S.F.Ratio,predict(mod15.4,newdata = datos_falsos)), col='yellow')
+lines(cbind(datos_falsos$S.F.Ratio,predict(mod15.s,newdata = datos_falsos)), col='orange')
+lines(cbind(datos_falsos$S.F.Ratio,predict(mod15.s5,newdata = datos_falsos)), col='purple')
+lines(cbind(datos_falsos$S.F.Ratio,predict(mod15.s10,newdata = datos_falsos)), col='pink')
+
+modc15=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+S.F.Ratio, data = datos2)
+modc15.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2), data = datos2)
+modc15.3=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,3), data = datos2)
+modc15.4=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,4), data = datos2)
+modc15.s=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+s(S.F.Ratio), data = datos2)
+modc15.s5=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+s(S.F.Ratio,5), data = datos2)
+modc15.s10=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+s(S.F.Ratio,10), data = datos2)
+
+anova(modc14,modc15,modc15.2,modc15.3,modc15.4)
+errores_tab(list(modc14,modc15,modc15.2,modc15.3,modc15.4,modc15.s,modc15.s5,modc15.s10))
+
+```
+
+
+Parece una buena opcion usar polinomios de grado dos.
+```{r}
+
+modc15=modc15.2
+```
+
+
+### Variable perc.alumni.
+```{r}
+summary(datos2$perc.alumni)
+mod16=gam(Grad.Rate~ perc.alumni, data = datos2)
+mod16.2=gam(Grad.Rate~ poly(perc.alumni,2), data = datos2)
+mod16.3=gam(Grad.Rate~ poly(perc.alumni,3), data = datos2)
+mod16.4=gam(Grad.Rate~ poly(perc.alumni,4), data = datos2)
+mod16.s=gam(Grad.Rate~ s(perc.alumni), data = datos2)
+mod16.s5=gam(Grad.Rate~ s(perc.alumni,5), data = datos2)
+mod16.s10=gam(Grad.Rate~ s(perc.alumni,10), data = datos2)
+
+summary(mod16)
+summary(mod16.2)
+summary(mod16.3)
+summary(mod16.4)
+summary(mod16.s)
+summary(mod16.s5)
+summary(mod16.s10)
+anova(mod16,mod16.2,mod16.3,mod16.4)
+errores_tab(list(mod16,mod16.2,mod16.3,mod16.4,mod16.s,mod16.s5,mod16.s10))
+
+plot(cbind(datos2$perc.alumni,datos2$Grad.Rate))
+datos_falsos=data.frame(perc.alumni=seq(-10, 100, 1))
+lines(cbind(datos_falsos$perc.alumni,predict(mod16,newdata = datos_falsos)), col='red')
+lines(cbind(datos_falsos$perc.alumni,predict(mod16.2,newdata = datos_falsos)), col='blue')
+lines(cbind(datos_falsos$perc.alumni,predict(mod16.3,newdata = datos_falsos)), col='green')
+lines(cbind(datos_falsos$perc.alumni,predict(mod16.4,newdata = datos_falsos)), col='yellow')
+lines(cbind(datos_falsos$perc.alumni,predict(mod16.s,newdata = datos_falsos)), col='orange')
+lines(cbind(datos_falsos$perc.alumni,predict(mod16.s5,newdata = datos_falsos)), col='purple')
+lines(cbind(datos_falsos$perc.alumni,predict(mod16.s10,newdata = datos_falsos)), col='pink')
+
+modc16=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2)+perc.alumni, data = datos2)
+modc16.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2)+poly(perc.alumni,2), data = datos2)
+modc16.3=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2)+poly(perc.alumni,3), data = datos2)
+modc16.4=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2)+poly(perc.alumni,4), data = datos2)
+modc16.s=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2)+s(perc.alumni), data = datos2)
+modc16.s5=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2)+s(perc.alumni,5), data = datos2)
+modc16.s10=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2)+s(perc.alumni,10), data = datos2)
+
+anova(modc15,modc16,modc16.2,modc16.3,modc16.4)
+errores_tab(list(modc15,modc16,modc16.2,modc16.3,modc16.4,modc16.s,modc16.s5,modc16.s10))
+
+modc16=modc16.s
+```
+
+ En este caso usaremos splines suavizados.
+```{r}
+modc16=modc16.s
+```
+
+### Variable Expend.
+```{r}
+
+summary(datos2$Expend)
+mod17=gam(Grad.Rate~ Expend, data = datos2)
+mod17.2=gam(Grad.Rate~ poly(Expend,2), data = datos2)
+mod17.3=gam(Grad.Rate~ poly(Expend,3), data = datos2)
+mod17.4=gam(Grad.Rate~ poly(Expend,4), data = datos2)
+mod17.s=gam(Grad.Rate~ s(Expend), data = datos2)
+mod17.s5=gam(Grad.Rate~ s(Expend,5), data = datos2)
+mod17.s10=gam(Grad.Rate~ s(Expend,10), data = datos2)
+mod17.bs=gam(Grad.Rate~ bs(Expend,knots = 20000, degree = 1), data = datos2)
+
+summary(mod17)
+summary(mod17.2)
+summary(mod17.3)
+summary(mod17.4)
+summary(mod17.s)
+summary(mod17.s5)
+summary(mod17.s10)
+anova(mod17,mod17.2,mod17.3,mod17.4)
+errores_tab(list(mod17,mod17.2,mod17.3,mod17.4,mod17.s,mod17.s5,mod17.s10, mod17.bs))
+
+plot(cbind(datos2$Expend,datos2$Grad.Rate))
+datos_falsos=data.frame(Expend=seq(0, 60000,100))
+lines(cbind(datos_falsos$Expend,predict(mod17,newdata = datos_falsos)), col='red')
+lines(cbind(datos_falsos$Expend,predict(mod17.2,newdata = datos_falsos)), col='blue')
+lines(cbind(datos_falsos$Expend,predict(mod17.3,newdata = datos_falsos)), col='green')
+lines(cbind(datos_falsos$Expend,predict(mod17.4,newdata = datos_falsos)), col='yellow')
+lines(cbind(datos_falsos$Expend,predict(mod17.s,newdata = datos_falsos)), col='orange')
+lines(cbind(datos_falsos$Expend,predict(mod17.s5,newdata = datos_falsos)), col='purple')
+lines(cbind(datos_falsos$Expend,predict(mod17.s10,newdata = datos_falsos)), col='pink')
+lines(cbind(datos_falsos$Expend,predict(mod17.bs,newdata = datos_falsos)), col='cyan')
+
+modc17=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2)+s(perc.alumni)+Expend, data = datos2)
+modc17.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2)+s(perc.alumni)+poly(Expend,2), data = datos2)
+modc17.3=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2)+s(perc.alumni)+poly(Expend,3), data = datos2)
+modc17.4=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2)+s(perc.alumni)+poly(Expend,4), data = datos2)
+modc17.s=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2)+s(perc.alumni)+s(Expend), data = datos2)
+modc17.s5=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2)+s(perc.alumni)+s(Expend,5), data = datos2)
+modc17.s10=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2)+s(perc.alumni)+s(Expend,10), data = datos2)
+modc17.bs=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2)+s(perc.alumni)+bs(Expend,knots = 20000, degree = 1), data = datos2)
+
+anova(modc16,modc17,modc17.2,modc17.3,modc17.4)
+errores_tab(list(modc16,modc17,modc17.2,modc17.3,modc17.4,modc17.s,modc17.s5,modc17.s10,modc17.bs))
+
+
+```
+
+Parece interesante el modelo con splines lineales usando un nodo.
+```{r}
+modc17=modc17.bs
+modc=modc17
+summary(modc)
+```
+

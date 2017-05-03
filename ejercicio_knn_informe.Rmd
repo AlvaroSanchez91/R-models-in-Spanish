@@ -1,0 +1,547 @@
+---
+title: "Ejercicio Knn"
+author: "Álvaro Sánchez Castañeda"
+date: "20 de febrero de 2017"
+output: md_document
+---
+##Resumen.
+ En este documento esta descrito todo el proceso de construcción de modelos con los datos propuestos.
+ 
+ Para el problema de clasificación ha sido necesaria la selección de variables, pues los resultados obtendios con todas las variables eran muy malos ($9$ variables $k=9$, nucleo="optimal"). 
+ 
+ Para el problema de regresión se han buscado distintos caminos para tratar de construir un buen modelo. En primer lugar se han construido dos modelos knn y knn aleatorio, en segundo lugar se han seleccionado variables y se han vuelto a construir otros dos modelos. En vista de que los errores obtenidos eran muy altos, se han tratado de localizar valores atipicos de la variable objetivo (los cuales tenian unos valores muy altos). Hemos aplicado los modelos construidos hasta el momento eliminando dichos datos atipicos del conjunto test, y como era de esperar, se ha reducido mucho el error. 
+ 
+ En vista de los errores atipicos de nuestros datos, se han vuelto a construir todos los modelos anteriores (volviendo a seleccionar variables), pero eliminando los datos atipicos del conjunto de entrenamiento. 
+ 
+ Al comparar todos los resultados, parece que el mejor modelo es el knn aleatorio con todas las variables construido sobre todos los datos de entrenamiento y con $k=4$.
+
+## Preprocesado
+
+
+ En primer lugar, cargamos los datos y los separamos en un conjunto test y uno de entrenamiento
+```{r}
+datos=read.csv("C:/Users/AlvaroSanchez91/Desktop/Master Big Data Sevilla/AEM Aprendizage Estadistico y Modelizacion/6. Regresión y clasificación mediante KNN/ejercicio/datawork.csv", header=TRUE, sep=";")
+head(datos)
+set.seed(564)
+n=dim(datos)[1]
+id_test=sample(1:n,floor(n/3))
+id_train=c(1:n)[-id_test]
+test=datos[id_test,]
+train=datos[id_train,]
+```
+
+ Para el algoritmo knn, es interesante tipificar los datos. Algunos de los algoritmos con los que vamos a trabajar tienen la opción de hacerlo, pero parece mejor tipificarlos nosotros mismos, y usar esos datos para todos los algoritmos. Trabajaremos como si no conociesemos los datos de entrenamiento, de modo que para la transformación solo usaremos las medias y varianzas de estos.
+
+```{r}
+
+varianzas=apply(train[-c(1,2)],2, var)
+medias=apply(train[-c(1,2)],2, mean)
+
+train_trans=train
+train_trans[-c(1,2)]=train_trans[-c(1,2)]-medias
+train_trans[-c(1,2)]=train_trans[-c(1,2)]/sqrt(varianzas)
+
+test_trans=test
+test_trans[-c(1,2)]=test_trans[-c(1,2)]-medias
+test_trans[-c(1,2)]=test_trans[-c(1,2)]/sqrt(varianzas)
+
+```
+
+##Problema de clasificación.
+
+```{r}
+library(kknn)
+set.seed(1234)
+(fit.train1 <- train.kknn(clasobj ~ . -varobj, train_trans, kmax = 20, scale="FALSE",
+                          kernel = c("triangular", "rectangular", "epanechnikov", "optimal"), 
+                          distance = 1))
+fit.train1$best.parameters
+plot(fit.train1)
+```
+
+ Mediante validación cruzada, los errores minimos se obtienen al aplicar el algoritmos con el nucleo "optimal", y con $k=10$. Veamos los errores que comete este modelo al predecir sobre el conjunto test.
+```{r}
+predicciones_test=predict(fit.train1, newdata = test_trans)
+print (table(predicciones_test,test_trans$clasobj))
+```
+
+ Numero de fallos:
+```{r}
+print( sum(predicciones_test!=test_trans$clasobj))
+```
+ Numero de aciertos:
+```{r}
+print( sum(predicciones_test==test_trans$clasobj))
+```
+
+ Las predicciones son muy malas, esto se puede deber a que estemos usando demasiadas variables predictoras y que este metodo no diferencie en funcion de las realmente importantes. Intentemos mejorar el resultado seleccionando variables mediante el uso de knn aleatorios.
+ 
+ Lo primero que tenemos que hacer es decidir el numero de variables que queremos en cada predictor del knn aleatorio asi como el numero de estos. Para ello, tomaremos una cantidad de predictores tal que tengamos una probabilidad del $0.99$ de que cada variable aparece al menos una vez en el modelo (el numero de variables por predictor lo tomaremos $m=20$). 
+ 
+ 
+```{r}
+library(rknn)
+set.seed(1234)
+p=ncol(datos)-2#quitamos las dos variables objetivo
+m=20
+(rnc=r(p,m,eta=0.99,method="binomial"))
+```
+
+ Basta con que tomemos 12 predictores, tomaremos 30. Comencemos seleccionando variables por un metodo geometrico, en el que en cada paso nos quedamos con el 80% de las mejores variables.
+ 
+ 
+```{r}
+datosrknn.selG = rknnBeg(data=train_trans[-c(1,2)], y=train_trans$clasobj, k = 10,
+                         r=30, mtry = m , seed=987654321,
+                         fixed.partition = FALSE, pk = 0.8 , stopat=10)
+```
+
+
+ Numero de variables seleccionadas en cada paso:
+```{r}
+datosrknn.selG$p
+```
+Graficas de acuracidad y soporte medio para cada paso:
+```{r}
+plot(datosrknn.selG$mean_accuracy,type="l", xlab="Paso", ylab="Acuracidad media",
+     main="medida de acuracidad en cada paso. Etapa Geométrica")
+
+plot(datosrknn.selG$mean_support,type="l", xlab="Paso", ylab="Soporte medio",
+     main="Soporte medio en cada paso. Etapa Geométrica")
+```
+Variables del paso anterior a la mejor seleccion:
+```{r}
+(mejorselgeo <- prebestset(datosrknn.selG, criterion="mean_support"))
+```
+ Apliquemosle a dichas variables una selección lineal.
+ 
+```{r}
+set.seed(1234)
+datosrknn.selLIN = rknnBel(data=train_trans[mejorselgeo], y=train_trans$varobj, k = 4, r=50, 
+                           mtry = m , seed=987654321, fixed.partition = FALSE, d=1, 
+                           stopat=4)
+
+plot(datosrknn.selLIN$mean_accuracy,type="l", xlab="Paso", ylab="Acuracidad media",
+     main="medida de acuracidad en cada paso. Etapa Lineal")
+
+plot(datosrknn.selLIN$mean_support,type="l", xlab="Paso", ylab="Soporte medio",
+     main="Soporte medio en cada paso. Etapa Lineal")
+plot(datosrknn.selLIN$mean_support,datosrknn.selLIN$mean_accuracy)
+```
+
+Elijamos entonces el paso con mejor soporte medio (coincide con el de mejor acuracidad).
+
+```{r}
+bestset(datosrknn.selLIN, criterion="mean_support")
+bestset(datosrknn.selLIN, criterion="mean_accuracy")
+variables_sel=bestset(datosrknn.selLIN, criterion="mean_accuracy")
+```
+Construyamos nuestro modelo con dichas variables.
+```{r}
+set.seed(1234)
+(fit.train_sel <- train.kknn(clasobj ~., train_trans[c(variables_sel,'clasobj')], 
+                             kmax = 20,scale="FALSE",kernel = c("triangular", "rectangular",
+                             "epanechnikov", "optimal"), distance = 1))
+```
+Veamos cuales son el mejor nucleo y el mejor k.
+```{r}
+fit.train_sel$best.parameters
+plot(fit.train_sel)
+```
+
+Matriz de confusión:
+```{r}
+
+predicciones_test=predict(fit.train_sel, newdata = test_trans)
+table(predicciones_test,test_trans$clasobj)
+```
+
+Fallos:
+```{r}
+sum(predicciones_test!=test_trans$clasobj)
+```
+
+
+Aciertos:
+```{r}
+sum(predicciones_test==test_trans$clasobj)
+```
+Hemos mejorado considerablemente los resultados. Otra opción para tratar de mejorar el resultado seria calcular las componentes principales.
+
+##Problema de regresión.
+###Algoritmo knn con todas las variables.
+```{r}
+set.seed(357)
+(train.con <- train.kknn(varobj ~ .-clasobj, data = train_trans,
+                         kmax = 20, kernel = c("rectangular", "triangular", "epanechnikov",
+                                               "gaussian", "rank", "optimal")))
+plot(train.con,main="Error cuadrático medio para los posibles nucleos y k. " ) 
+```
+ Tomamos $k=4$ y el nucleo triangular, mejor opcion segun el metodo de validación cruzada. Veamos que resultados obtenemos al predecir sobre el conjunto test.
+ 
+```{r}
+predicciones_test=predict(train.con, newdata = test_trans)
+plot(test_trans$varobj,predicciones_test,ylim=c(-10,200),xlim=c(-10,200),
+     main='Valor real vs prediccion')
+abline(a=0,b=1)
+```
+
+ECM para el conjunto test:
+```{r}
+(ecm_knn=sum((predicciones_test-test_trans$varobj)^2)/length(test_trans$varobj))
+```
+
+ECM para el conjunto de entrenamiento:
+```{r}
+train.con$MEAN.SQU[train.con$best.parameters$k,train.con$best.parameters$kernel]
+```
+
+
+###Algoritmo knn aleatorio con todas las variables.
+
+```{r}
+set.seed(1234)
+p=ncol(datos)-2
+m=10
+(rnc=r(p,m,eta=0.99,method="binomial"))#Necesitamos almenos 29 predicctores.
+
+datosrknn = rknnReg(data=train_trans[-c(1,2)],test_trans[-c(1,2)], 
+                    y=train_trans$varobj, k = 4, r=40, mtry = m , seed=987654321 )
+
+```
+Observemos la grafica para medir la bondad de este modelo.
+
+```{r}
+
+plot(test_trans$varobj,datosrknn$pred,xlim=c(0,200),ylim=c(0,200),
+     main='Valor real vs prediccion')
+abline(a=0,b=1)
+
+```
+
+ECM sobre los datos test:
+```{r}
+(ecm_rknn=sum((datosrknn$pred-test_trans$varobj)^2)/length(test_trans$varobj))
+```
+Parece que tenemos un mejor resultado con este modelo. Podemos intentar seleccionar variables para ver si mejoramos aun mas los resultados.
+
+##Selección de variables para regresión.
+
+Comencemos con una selección geometrica, tomando en cada paso el 80% de las mejores variables. 
+
+```{r}
+set.seed(1234)
+datosrknn.selG = rknnBeg(data=train_trans[-c(1,2)], y=train_trans$varobj,
+                         k = 4, r=50, mtry = m , seed=987654321,
+                         fixed.partition = FALSE, pk = 0.8 , stopat=10)
+```
+Numero de variables seleccionadas en cada paso.
+```{r}
+datosrknn.selG$p
+```
+Numero de variables de la mejor selección.
+```{r}
+length(bestset(datosrknn.selG, criterion="mean_accuracy"))
+length(bestset(datosrknn.selG, criterion="mean_support"))
+plot(datosrknn.selG$mean_accuracy,type="l", xlab="Paso", ylab="Acuracidad media",
+     main="medida de acuracidad en cada paso. Etapa Geométrica")
+
+plot(datosrknn.selG$mean_support,type="l", xlab="Paso", ylab="Soporte medio",
+     main="Soporte medio en cada paso. Etapa Geométrica")
+(mejorselgeo <- prebestset(datosrknn.selG, criterion="mean_support"))
+```
+ Nos quedaremos con las variables del paso anterior al mejor. Seleccionamos linealmente partiendo de la anterior selección geometrica.
+ 
+```{r}
+ncol(train_trans[,mejorselgeo])
+set.seed(1234)
+datosrknn.selLIN = rknnBel(data=train_trans[mejorselgeo], y=train_trans$varobj, 
+                           k = 4, r=50, 
+                           mtry = m , seed=987654321, fixed.partition = FALSE, d=1, 
+                           stopat=4)
+
+plot(datosrknn.selLIN$mean_accuracy,type="l", xlab="Paso", ylab="Acuracidad media",
+     main="medida de acuracidad en cada paso. Etapa Lineal")
+
+plot(datosrknn.selLIN$mean_support,type="l", xlab="Paso", ylab="Soporte medio",
+     main="Soporte medio en cada paso. Etapa Lineal")
+plot(datosrknn.selLIN$mean_support,datosrknn.selLIN$mean_accuracy)
+
+bestset(datosrknn.selLIN, criterion="mean_support")
+bestset(datosrknn.selLIN, criterion="mean_accuracy")
+variables_sel=bestset(datosrknn.selLIN, criterion="mean_accuracy")
+```
+ Ahora predizcamos basandonos unicamente es las variables seleccionadas.
+ 
+###Knn con variables seleccionadas.
+```{r}
+set.seed(357)
+(train.knn.sel <- train.kknn(
+  varobj ~ x27+x11+x23+x36+x13+x08+x14+x32+x09+x40+x17+x31+x29+x38+x12+x21,
+  data = train_trans,kmax = 20, kernel = c("rectangular", "triangular", "epanechnikov",
+                                               "gaussian", "rank", "optimal")))
+plot(train.knn.sel,main="Error cuadrático medio para los posibles nucleos y k. " ) 
+
+```
+
+ Veamos que tal predice este modelo sobre el conjunto test.
+
+```{r}
+
+predicciones_test=predict(train.knn.sel, newdata = test_trans)
+
+plot(test_trans$varobj,predicciones_test,xlim=c(0,200),ylim=c(0,200),
+     main='Valor real vs prediccion')
+abline(a=0,b=1)
+```
+
+ECM en datos test:
+```{r}
+(ecm_knn_sel=sum((predicciones_test-test_trans$varobj)^2)/length(test_trans$varobj))
+```
+ Estas predicciones son peores que las obtenidas sin seleccionar variables mediante knn. Costruyamos a continuación un metodo knn aleatorio usando las variables seleccionadas.
+
+###Knn aleatorio con variables seleccionadas.
+
+```{r}
+set.seed(1234)
+datosrknn.sel = rknnReg(data=train_trans[variables_sel],test_trans[variables_sel], 
+                        y=train_trans$varobj, k = 4, r=30, mtry = 2 , seed=987654321 )
+```
+ Veamos que tal predice este modelo:
+```{r}
+plot(test_trans$varobj,datosrknn.sel$pred,xlim=c(0,200),ylim=c(0,200),
+     main='Valor real vs prediccion')
+abline(a=0,b=1)
+```
+ECM en datos test:
+```{r}
+(ecm_rknn_sel=sum((datosrknn.sel$pred-test_trans$varobj)^2)/length(test_trans$varobj))
+```
+Veamos con que modelo hemos obtenido el menor error cuadrático medio.
+
+```{r}
+errores=t.data.frame( data.frame(c(ecm_knn,ecm_rknn,ecm_knn_sel,ecm_rknn_sel)))
+colnames(errores)=c('ecm_knn','ecm_rknn','ecm_knn_sel','ecm_rknn_sel')
+rownames(errores)='ecm'
+print(errores)
+```
+ El modelo con menor error sobre el conjunto test es el de knn aleatorio con todas las variables, aun así parece que tenemos errores muy altos, parece que se debe a los datos atípicos que se observan en las graficas que enfrentan valores reales y predicciones (hay muchos que no aparecen en dichas graficas). 
+ 
+ Podriamos ver que error cometemos sin tener en cuenta los datos atípicos del conjunto test ,tal vez seria buena idea eliminarlos también del entrenamiento.
+
+```{r}
+lim=min( boxplot(test_trans$varobj)$out)
+test_trans2=test_trans[test_trans$varobj<lim,]
+```
+```{r}
+predicciones_test=predict(train.con, newdata = test_trans2)
+(ecm_knn=sum((predicciones_test-test_trans2$varobj)^2)/length(test_trans2$varobj))
+```
+
+```{r}
+set.seed(1234)
+datosrknn = rknnReg(data=train_trans[-c(1,2)],test_trans2[-c(1,2)], y=train_trans$varobj,
+                    k = 4, r=40, mtry = m , seed=987654321 )
+(ecm_rknn=sum((datosrknn$pred-test_trans2$varobj)^2)/length(test_trans2$varobj))
+```
+
+```{r}
+predicciones_test=predict(train.knn.sel, newdata = test_trans2)
+(ecm_knn_sel=sum((predicciones_test-test_trans2$varobj)^2)/length(test_trans2$varobj))
+```
+
+```{r}
+set.seed(1234)
+datosrknn.sel = rknnReg(data=train_trans[variables_sel],test_trans2[variables_sel], 
+                        y=train_trans$varobj, k = 4, r=30, mtry = 2 , seed=987654321 )
+
+(ecm_rknn_sel=sum((datosrknn.sel$pred-test_trans2$varobj)^2)/length(test_trans2$varobj))
+```
+
+```{r}
+errores=t.data.frame( data.frame(c(ecm_knn,ecm_rknn,ecm_knn_sel,ecm_rknn_sel)))
+colnames(errores)=c('ecm_knn','ecm_rknn','ecm_knn_sel','ecm_rknn_sel')
+rownames(errores)='ecm'
+print(errores)
+```
+ Una vez eliminados los datos atipicos, queda claro que el mejor modelo es el knn aleatorio, y parece que mejora al seleccionar variables. 
+ 
+ Por ultimo, construiremos estos modelos eliminando los valores atipicos del conjunto de entrenamiento. Volveremos a tipificar los datos una vez eliminados estos datos atipicos.
+ 
+```{r}
+lim=min( boxplot(train$varobj)$out)
+train=train[train$varobj<lim,]
+varianzas=apply(train[-c(1,2)],2, var)
+medias=apply(train[-c(1,2)],2, mean)
+
+train_trans=train
+train_trans[-c(1,2)]=train_trans[-c(1,2)]-medias
+train_trans[-c(1,2)]=train_trans[-c(1,2)]/sqrt(varianzas)#Train sin outliers.
+
+test_trans=test
+test_trans[-c(1,2)]=test_trans[-c(1,2)]-medias
+test_trans[-c(1,2)]=test_trans[-c(1,2)]/sqrt(varianzas)#Test con outliers.
+
+lim=min( boxplot(test_trans$varobj)$out)
+test_trans2=test_trans[test_trans$varobj<lim,]#Test sin outliers.
+```
+
+### Algoritmo knn con todas las variables sin datos atipicos.
+
+```{r}
+set.seed(357)
+(train.con.out <- train.kknn(varobj ~ .-clasobj, data = train_trans,
+                         kmax = 20, kernel = c("rectangular", "triangular", "epanechnikov",
+                                               "gaussian", "rank", "optimal")))
+plot(train.con.out,main="Error cuadrático medio para los posibles nucleos y k. " ) 
+
+predicciones_test=predict(train.con.out, newdata = test_trans)
+predicciones_test2=predict(train.con.out, newdata = test_trans2)
+```
+
+
+ECM para el conjunto test:
+```{r}
+(ecm_knn.out=sum((predicciones_test-test_trans$varobj)^2)/length(test_trans$varobj))
+```
+ECM para el conjunto test sin datos atipicos:
+```{r}
+(ecm_knn.out2=sum((predicciones_test2-test_trans2$varobj)^2)/length(test_trans2$varobj))
+```
+
+ECM para el conjunto de entrenamiento:
+```{r}
+train.con.out$MEAN.SQU[train.con$best.parameters$k,train.con$best.parameters$kernel]
+```
+
+### Algoritmo knn aleatorio con todas las variables sin datos atipicos.
+
+```{r}
+set.seed(1234)
+p=ncol(datos)-2
+m=10
+rnc=r(p,m,eta=0.99,method="binomial")
+
+datosrknn = rknnReg(data=train_trans[-c(1,2)],test_trans[-c(1,2)], y=train_trans$varobj,
+                    k = 4, r=40, mtry = m , seed=987654321 )
+
+datosrknn2 = rknnReg(data=train_trans[-c(1,2)],test_trans2[-c(1,2)], y=train_trans$varobj,
+                     k = 4, r=40, mtry = m , seed=987654321 )
+```
+ECM sobre los datos test:
+```{r}
+(ecm_rknn.out=sum((datosrknn$pred-test_trans$varobj)^2)/length(test_trans$varobj))
+```
+
+ECM sobre los datos test sin datos atipicos:
+```{r}
+(ecm_rknn.out2=sum((datosrknn2$pred-test_trans2$varobj)^2)/length(test_trans2$varobj))
+```
+ Volvemos a seleccionar variables, tratando de mejorar la anterior selección.
+ 
+###Selección de variables para regresión sin datos atipicos.
+
+Comencemos con una selección geometrica, tomando en cada paso el 80% de las mejores variables. 
+
+```{r}
+set.seed(1234)
+datosrknn.selG = rknnBeg(data=train_trans[-c(1,2)], y=train_trans$varobj,
+                         k = 4, r=50, mtry = m , seed=987654321,
+                         fixed.partition = FALSE, pk = 0.8 , stopat=10)
+
+plot(datosrknn.selG$mean_accuracy,type="l", xlab="Paso", ylab="Acuracidad media",
+     main="medida de acuracidad en cada paso. Etapa Geométrica")
+
+plot(datosrknn.selG$mean_support,type="l", xlab="Paso", ylab="Soporte medio",
+     main="Soporte medio en cada paso. Etapa Geométrica")
+(mejorselgeo <- prebestset(datosrknn.selG, criterion="mean_support"))
+```
+
+ Nos quedaremos con las variables del paso anterior al mejor. Seleccionamos linealmente partiendo de la anterior selección geometrica.
+ 
+```{r}
+set.seed(1234)
+datosrknn.selLIN = rknnBel(data=train_trans[mejorselgeo], y=train_trans$varobj, 
+                           k = 4, r=50, 
+                           mtry = m , seed=987654321, fixed.partition = FALSE, d=1, 
+                           stopat=4)
+
+plot(datosrknn.selLIN$mean_accuracy,type="l", xlab="Paso", ylab="Acuracidad media",
+     main="medida de acuracidad en cada paso. Etapa Lineal")
+
+plot(datosrknn.selLIN$mean_support,type="l", xlab="Paso", ylab="Soporte medio",
+     main="Soporte medio en cada paso. Etapa Lineal")
+plot(datosrknn.selLIN$mean_support,datosrknn.selLIN$mean_accuracy)
+
+bestset(datosrknn.selLIN, criterion="mean_support")
+bestset(datosrknn.selLIN, criterion="mean_accuracy")
+variables_sel=bestset(datosrknn.selLIN, criterion="mean_accuracy")
+```
+ 
+###Knn con variables seleccionadas sin valores atipicos.
+```{r}
+cadena='varobj ~ x11'
+for ( i in 2:length(variables_sel)){
+  cadena=paste(cadena,'+',variables_sel[i])
+}
+set.seed(357)
+(train.knn.sel <- train.kknn(cadena,
+          data = train_trans,kmax = 20, kernel = c("rectangular", 
+                                                   "triangular","epanechnikov","gaussian", 
+                                                   "rank", "optimal")))
+
+plot(train.knn.sel,main="Error cuadrático medio para los posibles nucleos y k. " ) 
+predicciones_test=predict(train.knn.sel, newdata = test_trans)
+predicciones_test2=predict(train.knn.sel, newdata = test_trans2)
+```
+ECM en datos test:
+```{r}
+(ecm_knn_sel.out=sum((predicciones_test-test_trans$varobj)^2)/length(test_trans$varobj))
+```
+ECM en datos test sin datos atipicos:
+```{r}
+(ecm_knn_sel.out2=sum((predicciones_test2-test_trans2$varobj)^2)/length(test_trans2$varobj))
+```
+
+###Knn aleatorio con variables seleccionadas sin datos atipicos.
+
+```{r}
+set.seed(1234)
+datosrknn.sel = rknnReg(data=train_trans[variables_sel],test_trans[variables_sel],
+                        y=train_trans$varobj, k = 4, r=30, mtry = 2 , seed=987654321 )
+
+datosrknn.sel2 = rknnReg(data=train_trans[variables_sel],test_trans2[variables_sel],
+                         y=train_trans$varobj, k = 4, r=30, mtry = 2 , seed=987654321 )
+```
+
+ECM en datos test:
+```{r}
+(ecm_rknn_sel.out=sum((datosrknn.sel$pred-test_trans$varobj)^2)/length(test_trans$varobj))
+```
+
+ECM en datos test sin datos atipicos:
+```{r}
+(ecm_rknn_sel.out2=sum((datosrknn.sel2$pred-test_trans2$varobj)^2)/length(test_trans2$varobj))
+```
+
+Veamos los errores obtenidos con los modelos en los que se ha usado el conjunto de entrenamiento sin datos atipicos (pero aplicandolos sobre todo el conjunto test).
+
+```{r}
+errores=t.data.frame( data.frame(c(ecm_knn.out,ecm_rknn.out,
+                                   ecm_knn_sel.out,ecm_rknn_sel.out)))
+colnames(errores)=c('ecm_knn.out','ecm_rknn.out','ecm_knn_sel.out','ecm_rknn_sel.out')
+rownames(errores)='ecm'
+print(errores)
+```
+
+ Ahora veamos los errores de los mismos modelos, pero sobre el conjunto test sin valores atipicos.
+```{r}
+errores=t.data.frame( data.frame(c(ecm_knn.out2,ecm_rknn.out2,
+                                   ecm_knn_sel.out2,ecm_rknn_sel.out2)))
+colnames(errores)=c('ecm_knn.out2','ecm_rknn.out2','ecm_knn_sel.out2','ecm_rknn_sel.out2')
+rownames(errores)='ecm'
+print(errores)
+```
+El mejor modelo es el knn aleatorio con variables seleccionadas, aunque en el construido sobre todo el conjunto de entrenamiento obteniamos un error menor, de modo que nos quedariamos con dicho modelo (en dicho modelo, tomabamos k=4) .
+
