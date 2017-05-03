@@ -8,4 +8,9 @@ Using "datawork.csv" we have to do two predictive models, one of regression, and
 two diferent columns to do that).
 
 ## ejercicio_splines.md 
+
+### Exercise 1:
+Using the data Auto from the library ISLR, we have to make a predictive model. We should use a generalized linear model (such as poisson model).
+
+### Exercise 2:
 Using the data college of the library ISLR, we have to make a gam model in order to predict the Grad.Rate variable.
