@@ -2,7 +2,9 @@
 
 Here we can see some exercises of Machine Learning using R, and all of it explained in Spanish.
 I recomend reading the .md documents in the web, and download the .Rmd to run it using R.
-##Cluster_PC_Tree
+
+## Cluster_PC_Tree
+
 Diferents data sets are used here to show examples of clustering, principal components analysis, and decision trees.
 
 ## ejercicion_knn_informe
