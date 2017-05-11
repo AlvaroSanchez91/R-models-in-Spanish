@@ -1,0 +1,1127 @@
+---
+title: Trabajo de evaluación de Machine Learning I sobre la metodologia CART y reduccion
+  de la dimensionalidad.
+author: "Álvaro Sánchez Castañeda"
+date: "3 de mayo de 2017"
+output: md_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Ejercicio 1:
+
+### Leer el fichero “Crimen.dat”, que contiene el total de delitos por cada 100.000 habitantes para cada uno de lo estados de EEUU más el distrito de Columbia (Año 1986). Aplicar y comparar tres técnicas de análisis de conglomerados (una de tipo jerárquico, otra de tipo partición y el método basado en mixturas de normales multivariantes.
+
+## Lectura y preprocesado de los datos.
+
+Comenzemos pues cargando una libreria de tecnicas de analisis de conglomerados y los datos a los que vamos a aplicar dichas tecnicas. Comprovemos a su vez si tenemos valores perdidos en estos datos.
+```{r}
+library(cluster)
+datos=read.csv("C:\\Users\\AlvaroSanchez91\\Desktop\\Master Big Data Sevilla\\ML1 Machine Learning I\\Evaluación\\Archivo de datos Crimen\\Crimen.dat", sep = ' ')
+sum(is.na(datos))
+```
+Vemos que no tenemos ningun valor perdido. El siguiente paso que podemos tomar es tipificar las variables, es recomendable hacer esto con este tipo de tecnicas.
+
+```{r}
+print(apply(datos,2,var))
+print(apply(datos,2,mean))
+datos2=scale(datos,center = TRUE, scale = TRUE)
+print(apply(datos2,2,var))
+print(apply(datos2,2,mean))
+```
+En datos2 hemos guardado los datos con varianza uno y media cero. 
+
+## Breve analisis exploratorio.
+
+Buscaremos valores atipícos en nuestro conjunto de datos, tambibién pueden afectar a algunos metodos.
+
+```{r}
+boxplot(datos2, axes=T,cex.axis=0.5,col='lightblue')
+atipicos=data.frame()
+outliers=c()
+for(i in 1:7){
+  out=boxplot(datos2[,i], plot=F)$out
+  outliers=c(outliers,names(out))
+}
+print(outliers)
+```
+Tenemos que DC y NY tienen valores atipicos, es mas, DC tiene valores atipicos para dos variables distintas. Tal vez sería razonable apartar a DC de nuestro estudio, y considerarlo como un cluster en si mismo. Para esto crearemos una nueva tabla de datos sin DC, y compararemos los resultados de trabajar con y sin el.
+
+```{r}
+datos_sin_out=datos[rownames(datos) != 'DC', ]#Sin tipificar
+datos_sin_out2=scale(datos_sin_out,center = TRUE, scale = TRUE)#Tipificando
+```
+
+Veamos las correlacciones entre las variables de datos sin tipificar, tanto teniendo o no en cuenta a DC.
+
+
+```{r, fig.width = 5, fig.height = 3.9}
+
+library(corrplot)
+corrplot(cor(datos),addCoef.col="black")
+corrplot(cor(datos_sin_out),addCoef.col="black")
+```
+
+
+
+\newpage
+ Los resultados obtenidos parecen razonables. Observemos a su vez que aunque alguna correlacion parece algo elevada, no lo es tanto como para plantearse eliminar variables directamente.
+
+ Veamos a continuación que todas nuestras variables son reales, lo cual nos permitirá posteriormente hacer analisis de conglomerados mediante la distancia euclídea.
+```{r}
+head(datos)
+```
+
+\newpage
+
+## Metodos jerarquicos sobre datos estandarizados.
+### Metodo aglomerativo.
+```{r}
+d=dist(datos2)#Calculamos las distancias entre individuos.
+jer=hclust(d)#Aplicamos un algoritmo aglomerativo con un metodo de unión simple.
+plot(jer, cex=0.5)
+```
+Lo primero que observamos es que DC (el valor que hemos tomado como atipico) lo separa drasticamente del resto de valores, y solo se agrupa en el ultimo paso. Necesitamos decidir si hay un numero apropiado de clusters para estos datos.
+
+ En coeficientes guardaremos para cado paso del metodo jerarquico la altura (height) del paso anterior, dividida entre la altura de el paso actual. Esto puede ayudar a elegir un numero de clusters conveniente.
+```{r}
+coeficientes=c(0)
+for (i in 2:length(jer$height)){
+  coeficientes=append(coeficientes,jer$height[i-1]/jer$height[i])
+}
+print(tail(cbind(jer$merge,jer$height,coeficientes)))
+```
+
+En vista del dendograma y de los datos, parece conveniente tomar tres o cuatro clusters.
+```{r, fig.height = 3.5}
+plot(jer,main="Dendrograma", cex=0.5,hang = -1)
+rect.hclust(jer, k=4,border="red")
+plot(jer,main="Dendrograma", cex=0.5,hang = -1)
+rect.hclust(jer, k=3,border="red")
+```
+
+Hagamos el mismo proceso pero utilizando otra función de R, agnes. Esta a su vez proporciona un grafico de las alturas (banner), bastante util.
+```{r}
+
+jer1=agnes(d, diss = T,method = 'complete', stand = F)
+
+par(mfrow=c(1,2))
+plot(jer1,which.plots=c(2),main="Dendrograma",cex=0.25)
+plot(jer1,which.plots=c(1),main="Banner")
+par(mfrow=c(1,1))
+
+
+h=sort(jer1$height)
+coeficientes1=c(0)
+for (i in 2:length(jer1$height)){
+  coeficientes1=append(coeficientes1,h[i-1]/h[i])
+}
+print(tail(cbind(jer1$merge,h,coeficientes1)))
+```
+
+### Metodo divisivo.
+
+```{r}
+jer2=diana(d, diss = T)
+
+par(mfrow=c(1,2))
+plot(jer2,which.plots=c(2), cex=0.25,main="Dendrograma")
+plot(jer2,which.plots=c(1),main="Banner")
+par(mfrow=c(1,1))
+
+h2=sort(jer2$height)
+coeficientes2=c(0)
+for (i in 2:length(jer2$height)){
+  coeficientes2=append(coeficientes2,h2[i-1]/h2[i])
+}
+print(tail(cbind(jer2$merge,h2,coeficientes2)))
+
+
+```
+ 
+ 
+ Hemos repetido los mismos pasos que en el algoritmo aglomerativo y, esta vez, parece que tres clusters es la mejor opción.
+
+
+\newpage
+
+## Métodos de partición.
+
+### Metodo de K-medias.
+
+```{r,fig.height = 3.9}
+
+kmedias=kmeans(datos2,3)#inestable ante el valor atipico
+
+#centros de los clusters
+kmedias$centers
+#Vector de n componentes indicando el cluster al que se asigna  cada punto
+kmedias$cluster
+#Número de puntos en cada cluster  
+kmedias$size
+```
+\newpage
+
+```{r,fig.height = 3.5}
+plot(as.data.frame(datos2),col=c(1,2,3)[kmedias$cluster])
+```
+
+ El anterior algoritmo es inestable ante valores atipicos, por lo que sería recomendable utilizar el algoritmo de k-medioides o eliminar DC del análisis. Veamos como quedarian divididos los datos si tomamos k igual a dos y no consideramos DC.
+```{r,fig.height = 3.5}
+kmedias2=kmeans(datos_sin_out2,2)
+plot(as.data.frame(datos_sin_out2),col=kmedias2$cluster)
+```
+
+ \newpage
+ 
+ Si se repite varias veces el proceso de k-medias descrito anteriormente (con DC incluido en los datos), llegamos a divisiones muy distintas (algunas de ellas separan a DC). Se muestra mas estable el algoritmo sin considerar DC, pero otra solución pasa por aplicar el algoritmo de k-medioides, que es mas estable ante estas situaciones.
+ 
+### Método de k-medioides.
+Probemos a construir los clusters mediante este metodo con K igual a tres.
+
+```{r,fig.height = 3.5}
+kmedioides=pam(datos2,3)
+plot(kmedioides)
+```
+
+\newpage
+
+ Este metodo proporciona una medida de silueta, la cual es bastante mala para k igual a tres. Tomemos k igual a dos ,lo cual es razonable teniendo en cuenta que en el proceso jerarquico DC quedaba separado en un único cluster.
+
+
+```{r,fig.height = 3.5}
+kmedioides=pam(datos2,2)
+plot(kmedioides)
+```
+\newpage
+```{r,fig.height = 3}
+plot(datos,col=c(1,2,3,4)[kmedioides$cluster])
+```
+
+
+Podemos probar, al igual que hicimos con el metodo de k-medias, a eliminar DC del analisis de conglomerados. Veamos si de este modo mejora la silueta media.
+\newpage
+
+```{r,fig.height = 3}
+kmedioides2=pam(datos_sin_out2,2)
+plot(kmedioides2)
+```
+\newpage
+```{r,fig.height = 3}
+plot(as.data.frame(datos_sin_out2),col=kmedioides2$cluster)
+```
+
+ Curiosamente, la medida de silueta empeora si no consideramos DC en el analisis mediante k-medioides. Esta vale 0.39, mientras que la anterior, considerando DC, valia 0.4. En cualquier caso son practicamente iguales, aunque no clasifican igual a los elementos distintos de DC.
+
+```{r}
+
+table(cbind(data.frame(kmedioides$clustering[names(kmedioides$clustering)!='DC']),
+            data.frame(kmedioides2$clustering)))
+```
+ Habria que decantarse por una de las dos opciones, ya que DC a aparecido tan diferenciado anteriormente, apesar de tener una peor silueta yo me quedaria con esta ultima división en la que no lo hemos considerado. De este modo podriamos interpretar que tenemos tres grupos, uno formado únicamente por DC, y los otros dos los dados en esta última ejecución de k-medioides.
+ 
+
+## Método basado en mixturas de normales.
+Carguemos una librería que contiene estos procedimientos y apliquemoslos sobre los datos tipificados icluyendo y sin incluir a DC.
+```{r}
+library(mclust)
+clus_Mix=Mclust(datos2)
+clus_Mix_sin_out=Mclust(datos_sin_out2)
+```
+ Este comando ejecuta distintos metodos para modelar las distribuciones normales (suponiendo igual tamaño de las normales, igual orientación, etc) y tambien toma varios k distintos. Para cada uno de los resultados obtenidos nos devuelve un criterio de incertidumbre BIC que podemos usar para decidir que partición tomar.
+
+\newpage
+```{r,fig.height=4}
+plot(clus_Mix,what = "BIC")
+plot(clus_Mix_sin_out,what = "BIC")
+```
+
+
+ Vemos que en general, para todos los modelos, parece mejor considerar DC en el estudio (aparentemente, las escalas son distintas). Si solo comparamos los dos mejores resultados para cada conjunto de datos, obtenemos valores BIC similares.
+
+```{r}
+summary(clus_Mix)
+summary(clus_Mix_sin_out)
+```
+
+Sería ligeramente mejor el procedimiento habiendo tomado en cuenta a DC (al igual que pasaba con el metodo de k-medioides). Vemos que en ese caso el mejor metodo usa normales "elipsoidales" de "igual forma". Veamos graficamente como quedarian los datos clasificados.
+\newpage
+```{r,fig.height=4}
+plot(clus_Mix,what = "classification")
+plot(clus_Mix_sin_out,what = "classification")
+```
+\newpage
+
+## Comparación de distintos metodos.
+
+ Por ultimo, compararemos las particiones obtenidas mediante un metodo jerarquico aglomerativo, uno de partición y uno basado en mixturas de normales. Se ha dejado fuera del estudio a DC, aunque vistos los resultados obtenidos anteriormente, aunque sea un valor muy diferenciado no esta claro si devemos apartarlo.
+
+ Cuando aplicamos los métodos jerarquicos, no fue necesario ver que pasaba si apartabamos a DC, dado que este quedaba siempre separado y el dendograma restante quedaria igual. Ahora si que haremos esto simplemente para obtener la partición con k igual a dos y sin DC (también se podría eliminar directamente). Tomarémos un método jerarquico aglomerativo.
+ 
+```{r}
+d_sin_out=dist(datos_sin_out2)#distancia entre elementos
+jer0_sin_out=hclust(d_sin_out)
+```
+
+ Comparemos ahora como quedan los datos divididos usando este ultimo metodo con la partición realizada mediante mixturas, y con la partición realizada usando k-medioides. Todo esto sin considerar a DC y tomando dos clusters.
+ 
+```{r}
+table(cbind(data.frame(clus_Mix_sin_out$classification),data.frame(kmedioides2$clustering)))
+```
+ Da la casualidad que se clasifican utilizando las mismas etiquetas (es decir, hay muchos elementos en la diagonal de la tabla). Podría ser, que al ser aprendizaje no supervisado, tuviesemos clasificaciones parecidas pero con etiquetas distintas, en cuyo caso tendríamos valores grandes fuera de la diagonal. Esto no sucede, y es mas facil de interpretar la tabla, ademas vemos que se parecen mucho las clasificaciones. 
+ 
+ Veamos ahora si se parecen las tres clasificaciones, comparando tambien con la obtenida mediante el método jerarquico.
+ 
+```{r}
+clasificaciones=cbind(data.frame(clus_Mix_sin_out$classification),
+                      data.frame(kmedioides2$clustering),cutree(jer0_sin_out, k = 2))
+colnames(clasificaciones)=c('Mixturas','Kmedioides','Jerarquico')
+table(clasificaciones)
+```
+Aparentemente tiene buena pinta, contemos cuantos coinciden.
+```{r}
+clasificaciones_aux=clasificaciones[
+  clasificaciones$Mixturas==clasificaciones$Kmedioides,]
+clasificaciones_aux=clasificaciones_aux[
+  clasificaciones_aux$Mixturas==clasificaciones_aux$Jerarquico,]
+
+dim(clasificaciones_aux)
+```
+ Efectivamente tenemos mucha coincidencia. Esto da cierta confianza, pues, de algun modo da lugar a pensar que los datos son "facilmente agrupables". Pero no es una medida fiable, solo algo intuitivo. A la hora de decantarse por una partición es mejor no usar un metodo jerarquico, lo razonable parece elejir la obtenida mediante mixturas o mediante k-medioides.
+
+
+
+\newpage
+
+# Ejercicio 2. 
+
+### Acceder a los datos gironde la librería PCAmixdata. En los siguientes apartados seleccionar los registros completos si hay valores perdidos.
+###  i) Realizar e interpretar un análisis de componentes principales (matriz de correlaciones) para gironde\$employment.
+###  ii) Realizar e interpretar un análisis de componentes principales para datos mixtos sobre la unión de gironde\$employment y gironde\$services.
+###  iii) Aplicar procedimientos de selección de variables para construir modelos de regresión lineal donde income es la variable dependiente, sobre gironde\$employment.
+
+##i) Análisis de comonentes principales para gironde\$employment.
+
+### Lectura y preprocesado de datos.
+
+ Comenzemos cargando la librería y los datos gironde\$employment para este apartado. Tambien veamos que estructura tienen estos datos.
+ 
+```{r}
+library(PCAmixdata)
+data('gironde')
+datos_empleo=gironde$employment
+head(datos_empleo)
+```
+
+ Veamos si hay valores perdidos.
+```{r}
+which(apply(apply(datos_empleo,2,is.na),1,sum)!=0)
+datos_empleo2=datos_empleo[-which(apply(apply(datos_empleo,2,is.na),1,sum)!=0),]
+dim(datos_empleo)
+dim(datos_empleo2)
+```
+Hemos quitado los dos elementos que presentan valores perdidos.
+
+### Calculo de componentes principales.
+
+ Lo primero que podemos hacer en nuestro analisis de componentes principales, es ver que pinta tiene nuestra matriz de correlaciones.
+
+```{r}
+library(corrplot)
+corrplot(cor(datos_empleo2),addCoef.col="black")
+```
+
+En lugar de abordar directamente el problema diagonalizando esta matriz, podemos recurrir a una función de PCAmixdata para facilitar los calculos. Veamos a su vez un resumen de los resultados obtenidos.
+```{r}
+acp<- princomp(datos_empleo2, cor = TRUE)#con cor=TRUE trabajamos con la matriz de correlaciónes
+#esto daría igual si tipificamos los datos.
+summary(acp)
+```
+ Obtenemos las componentes principales (combinaciones lineales de las variables originales) ordenadas directamente en orden descendiente de varianza (cuando transformemos los datos, primero los tipificará y despues hará la transformación dada por la diagonalización pues hemos indicado cor = TRUE). El resumen también proporciona la proporción acumulada de la varianza total, de este modo podemos observar, por ejemplo, que solo nos bastan cinco componentes principales para explicar algo mas del 80% de la varianza total.
+
+
+ Podemos tratar de crear una tabla que reuna los información anterior, pero que sea algo mas facil de leer.
+
+```{r}
+resumen<- matrix(NA,nrow=length(acp$sdev),ncol=3)
+resumen[,1]<-  acp$sdev^2
+resumen[,2]<- 100*resumen[,1]/sum(resumen[,1])
+resumen[,3]<- cumsum(resumen[,2])
+colnames(resumen)<- c("Autovalor","Porcentaje","Porcentaje acumulado")
+resumen
+```
+
+ Aunque no es necesario, por curiosidad podemos diagonalizar nosotros mismos mediante una funcion de R la matriz de correlaciones.
+
+```{r}
+R=cor(datos_empleo2)#matriz de correlaciones
+eigen(R)$values#automalores de R
+```
+Vemos que obtenemos los mismos autovalores (varianza de las componentes principales). Veamos los coeficientes de las componentes principales (matriz de cambio de base).
+
+```{r}
+loadings(acp)#Coeficientes
+round(eigen(R)$vectors,2)  #haciendo el calculo a "mano"
+```
+
+Aquí debemos tener cuidado al transformar de forma manual. Si tenemos un dato y queremos escribirlo en función de sus componentes principales no podemos multiplicar directamente por la matriz de autovectores. Antes de ese paso debemos tipificar, pensemos ademas, que en otro caso, esta discusión de la varianza no tendría sentido. Veamos que efectivamente esto es lo que hacemos si transformamos un dato.
+```{r}
+m=matrix(loadings(acp),9,9)
+datos_empleo3=scale(datos_empleo2)
+t(as.matrix(datos_empleo3[1,])) %*% m 
+predict(acp, datos_empleo2[1,])
+```
+
+
+
+
+### Selección de componentes principales.
+
+
+Podríamos tratar de usar procedimiento inferencial con el objetivo de seleccionar un numero de componentes principales. Los datos deben seguir una normal multivariante para aplicar este procedimiento. Veamos si las marginales siguen normales mediante el test de Shapiro-Wilk.
+
+```{r}
+for (i in 1:length(colnames(datos_empleo2))){
+  print(shapiro.test(datos_empleo2[,i])$p.value)
+}
+```
+
+Tenemos algunos p-valores muy pequeños, de modo que descartamos la normalidad en algunas marginales y por tanto en la distribución conjunta. Elijamos entonces el numero de componentes principales con el que vamos a trabajar mediante un procedimiento gráfico.
+
+```{r}
+plot(acp,col="blue",main="Condiciones de trabajo.") 
+abline(h=mean(resumen[,1]),lwd=2,lty=2,col="red")
+```
+El grafico muestra las varianzas de cada una de las componentes principales, recordemos que al haber trabajado con la matriz de correlaciones, la media de estas varianzas es uno. De este modo, la linea roja separa las componentes principales cuya varianza supera a la media. Podriamos quedarnos con cuatro componentes principales.
+
+
+### Interpretación de las componentes principales.
+
+Veamos las correlaciones de las componentes principales elejidas con las variables originales.
+
+```{r}
+correlaciones<-loadings(acp)%*%diag(acp$sdev)
+correlaciones[,1:4] 
+```
+
+Mediante las correlaciones que acabamos de calcular, se definen las comunidades:para cada variable, es la suma de correlaciones cuadrado con las c.p. seleccionadas. Calculemoslas.
+
+```{r}
+cbind(apply(correlaciones[,1:4]^2,1,sum)) 
+```
+
+Presentemos las correlaciones en una grafica que a primera vista sea mas facil de entender.
+
+```{r}
+corrplot(correlaciones[,1:4],method="ellipse",addCoef.col="black")
+```
+
+Viendo esto, podriamos pensar, por ejemplo, que si tenemos un elemento con un valor alto para la cuarta componente principal, es facil que tenga un valor alto para la variable tradesmen. Otra posible interpretación, algo mas arriesgada, es ver si las distintas variables se parecen en sus correlaciones a las componentes principales, y pensar por lo tanto, que se parecen entre si. Es decir, buscar "grupos" de variables parecidas.
+
+\newpage
+
+Podemos usar graficos de caja y bigote para ver la variabilidad de cada componente principal.
+
+```{r}
+boxplot(acp$scores,col="lightblue",notched=TRUE)
+```
+
+Vemos que hay componentes con bastantes valores perdidos.
+
+### Correlaciones reproducidas con cuatro componentes principales.
+
+Podemos reproducir las correlaciones entre las variables originales usando las cuatro componentes principales que hemos elegido.
+
+```{r}
+descompespec<-eigen(R)
+autovalores<- descompespec$values
+autovectores<- descompespec$vectors
+Raprox2<- autovectores[,1:4]%*%diag(autovalores[1:4])%*%t(autovectores[,1:4])
+Raprox2  #Matriz de correlaciones reproducidas
+```
+
+Veamos si se parece mucho a la matriz de correlaciones original mediante las correlaciones residuales.
+
+```{r}
+Resid2=R-Raprox2#CORRELACIONES RESIDUALES
+mean((Resid2)^2)
+corrplot(Resid2)
+```
+ Parece que la aproximación es buena, los resuduos mas altos se encuentran en la diagonal, esto se debe a que quedaba relativamente bastante varivilidad por explicar.
+ 
+\newpage
+
+##ii) Realizar e interpretar un análisis de componentes principales para datos mixtos sobre la unión de gironde\$employment y gironde\$services.
+
+
+### Lectura y preprocesamiento de los datos.
+```{r}
+datos_servicios=gironde$services
+head(datos_servicios)
+```
+ Vemos que tenemos variables de tipo factor, seria combeniente ver las etiquetas posible de cada variable.
+ 
+```{r}
+for (i in c(1:9)){
+  print(levels(datos_servicios[,i]))
+}
+```
+ Construyamos nuestros datos mixtos uniendo las variables cuantitativas y las cualitativas. Una vez echo esto, podemos eliminar los datos con valores perdidos.
+
+```{r}
+datos_mixtos=cbind(datos_empleo,datos_servicios)#unimos las variables
+which(apply(apply(datos_mixtos,2,is.na),1,sum)!=0)#buscamos valores perdidos
+datos_mixtos2=datos_mixtos[-which(apply(apply(datos_mixtos,2,is.na),1,sum)!=0),]
+dim(datos_mixtos)
+dim(datos_mixtos2)
+```
+
+
+### Análisis de componentes principales.
+ Para este tipo de datos mixtos habrá que volver a separar las variables en cualitativas y cuantitativas, antes los juntamos para buscar los valores perdidos. Esta separación es necesaria, pues se construye una matriz (que definirá una métrica) apartir de dos matrizes, cada una obtenida de los datos con variables cualitativas y cuantitativas respectivamente. Cuando finalmente tengamos la matriz, lo que se hará será descomponer en valores singulares (tal como hacíamos con las componentes principales para datos cuantitativos).
+
+ Todo este proceso lo realiza la función PCAmix, solo tenemos que introducirle las dos tablas de datos cuantitativos y cualitativos.
+
+
+```{r}
+split<-splitmix(datos_mixtos2)#dividimos en datos cualitativos y cuantitativos. 
+
+X1<-split$X.quanti#guardamos datos cuantitativos
+X2<-split$X.quali#guardamos datos cualitativos
+
+res.pcamix<-PCAmix(X.quanti=X1, X.quali=X2, #guardamos la información del analisis
+                   rename.level=TRUE, graph=FALSE,ndim=25)
+#Con ndim=25 se guarda información en el objeto de 25 dimensiones
+```
+Hemos generado el objeto y guardado la información de las 25 dimensiones que genera, podemos comenzar viendo los autovalores y la proporción de inercia explicada por cada dimension.
+
+```{r}
+res.pcamix$eig
+sum(res.pcamix$eig[,1])#inercia total
+```
+ Vemos que con 12 dimensiones tenemos explicada el ochenta por ciento de la inercia, que en total suma 25. Pasemos a ver la proporción que explica cada dimensíon sobre cada variable. 
+
+```{r}
+#Suma de las proporciones, a veces vale mas de uno debido a las variables dummie.
+apply(res.pcamix$sqload,1,sum)
+```
+Tenemos venticinco dimensiones, lo cual puede ser algo engorroso. Podemos volver a generar el objeto con la información de las componentes principales, pero en esta ocasión guardar solo la inofrmación de cinco dimensiones.
+
+```{r}
+res.pcamix<-PCAmix(X.quanti=X1, X.quali=X2, 
+                   rename.level=TRUE, graph=FALSE,ndim=5)#con ndim=5 guardamos 5 dimensiones
+```
+
+Ahora si, veamos la proporción que explica cada dimensíon sobre cada variable.
+
+```{r}
+res.pcamix$sqload
+```
+
+Podemos ver también como se reparte la inercia de cada dimensión entre las variables (lo expresaremos en porcentajes).
+```{r}
+#unimos los porcentajes de las variables cualitativas y cuantitativas
+A=rbind(100*res.pcamix$quali$contrib.pct,
+        res.pcamix$quanti$contrib.pct)
+A
+apply(A,2,sum) #vemos que suman 100 para cada dimensión
+```
+ Ya hemos visto por encima como se reparte la inercia, veamos como serían algunos de los coeficientes de la transformación lineal para expresar nuestros datos en terminos de las dimensiones (componentes principales). A su vez, veamos algunos resultados de estas transformaciones.
+ 
+```{r}
+head(data.frame(res.pcamix$coef))
+head(res.pcamix$ind$coord)
+```
+Del mismo modo, podemos ver las coordenadas de las categorías de las variables cualitativas, al igual que sucedía con el analisis de correspondencias. Veamos pues algunas de estas coordenadas.
+```{r}
+head(res.pcamix$levels$coord[,1:4])
+```
+
+### Interpretación.
+
+Podemos tratar de ayudarnos de este analisis de componentes principales para interpretar los datos, aunque con las dos primeras dimensiones solo explicamos el 36% de la inercia. Veamos de todas formas algunas graficas para ver que tenemos.
+
+  Comencemos viendo como son algunas nuves de puntos en las dos primeras dimensiones.
+
+```{r,fig.height=3}
+
+plot(res.pcamix,choice="ind",axes=c(1,2),
+     coloring.ind=X2$baker ,label=FALSE,
+     posleg="bottomright", main="Observations")
+```
+Hemos pintado los puntos de distintos colores en función de la variable baker. Vemos que estas dos dimensiones separan bastante bien estos casos. Parece que las categorías de esta variable realmente vienen de una de conteo, y que dicha variable de conteo esta directamente relaccionada con la dimensión 1.
+
+
+```{r,fig.height=3}
+plot(res.pcamix,choice="ind",axes=c(1,2),
+     coloring.ind=X2$postoffice ,label=FALSE,
+     posleg="bottomright", main="Observations")
+
+```
+
+
+Es la misma nuve de puntos pero identificando los puntos en función de la variable post ofice. Parece que si la primera dimension es positiva o negativa determina con cierta fuerza a que categoría pertenecen los datos.
+
+Veamos ahora si podemos sacar conclusiones de como quedarían las distintas etiquetas de las variables cualitativas distribuidas en estas dos primeras dimensiones.
+
+```{r}
+plot(res.pcamix,choice="levels",
+     axes=c(1,2),xlim=c(-2,3.5),cex=0.7, 
+     main="Levels")
+```
+
+Se aprecia rapidamente como las etiquetas correspondientes a los valores nulos se agrupan a la izquierda de la grafica. Además, el resto de etiquetas parece que tambien se agrupan en valores medios y valores altos, siendo ambas dimensiones mayores para etiquetas correspondientes a valores mas altos (si dejamos de lado a las correspondientes a valores nulos).
+
+\newpage
+
+ Veamos ahora una representación de las 'correlaciones' entre las variables cuantitativas.
+
+```{r}
+plot(res.pcamix,choice="cor",axes=c(1,2),
+     main="Numerical variables")
+```
+Se aprecia como algunas variables se parecen, como income y managers, las cuales a su vez parecen tener una relacción inversa con la variable workers. De hecho, siendo menos exigentes, podemos apreciar tres grupos de variables que se agrupan en los tres primeros cuadrantes respectivamente.
+
+Tratemos por ultimo de reprensentar conjuntamente las variables cualitativas y cuantitativas.
+```{r}
+plot(res.pcamix,choice="sqload",axes=c(1,2), 
+     coloring.var="type", leg=TRUE, 
+     xlim=c(-0.1,1.05),posleg="topright", 
+     main="All variables")
+
+```
+
+Aquí se podría apreciar como se relaccionan algunas variables con las dimensiones del análisis de componentes principales y deducir de esto relacciones entre ellas. Lo primero que salta a la vista, es que las variables categoricas toman valores mas altos y, por lo tanto, están mas relaccionadas con estas dos dimensiones (mirar tabla de porcentajes de inercia repartida entre las variables para cada dimensión). Por otro lado podemos tratar de ver algunas de estas relacciones, vemos por ejemplo que la variable workers se relacciona bastante con la segunda dimensión, mientras que farmers lo hace con la primera (en la grafica anterior, al igual que en esta, se observa como son perpendiculares, de lo que se deduciría que son mas o menos independientes), esto podríamos hacerlo con mas variables. Por último, se puede apreciar como en general, las variables categoricas parecen estar mas relaccionadas entre sí que las numericas, aunque evidentemente se aprecian grupos como el formado por doctor dentist y baker.
+
+\newpage
+
+##  iii) Aplicar procedimientos de selección de variables para construir modelos de regresión lineal donde income es la variable dependiente, sobre gironde\$employment.
+
+### Preprocesamiento de los datos.
+Ya tenemos los datos cargados y sin valores perdidos, dividamoslos en conjuntos de entrenamiento y test para evaluar que tal funciona la selección de variables.
+
+```{r}
+set.seed(1)
+n=nrow(datos_empleo2)#numero de filas
+
+inditest<- sample(1:n,trunc(n*0.25)+1)#indices de test
+inditrain<-setdiff(1:n,inditest)#indices de entrenamiento
+
+#tomamos train y test tipificados
+train_empleo=data.frame(scale(datos_empleo2[inditrain,]))
+#escalamos respecto a los datos train
+test_empleo=data.frame(scale(datos_empleo2[inditest,], center = 
+                               apply(datos_empleo2[inditrain,],2,mean),
+            scale = apply(datos_empleo2[inditrain,],2,sd)))
+```
+ Ya que hemos estado calculando componentes principales en las partes anteriores del ejercicio, podríamos probar a usarlas para ver si obtenemos buenos resultados con el modelo de regresión. Las calcularemos usando solo los datos de entrenamiento y las variables predictoras.
+ 
+```{r}
+#calculamos componentes principales
+acp_train<- princomp(train_empleo[,-c(9)], cor = TRUE)
+#transformacion de datos de entrenamiento
+train_empleo_acp=data.frame(cbind(predict(acp_train,train_empleo[,-c(9)]),
+                                  train_empleo[,c('income')]))
+colnames(train_empleo_acp)[9]='income'
+#transformacion de datos test
+test_empleo_acp=data.frame(cbind(predict(acp_train,test_empleo[,-c(9)]),
+                                 test_empleo[,c('income')]))
+colnames(test_empleo_acp)[9]='income'
+```
+ 
+ Hagamos simplemente una grafica de la varianza explicada por estas componentes principales para despues seguir con la selección de variables.
+ 
+```{r}
+plot(acp_train,col="blue",main="Condiciones de trabajo.") 
+abline(h=1,lwd=2,lty=2,col="red")
+```
+En esta ocasión tenemos evidentemente una componente principal menos.
+
+### Modelos de regresión lineal con todas las variables.
+
+ Ya que vamos a crear distintos modelos, podemos crear una función que evalue que tal se comportan sobre el conjunto test.
+
+```{r}
+Ajuste<- function(y,pred,titulo)
+{
+  residuos=y-pred
+  plot(y,pred,main=titulo,ylab=expression(hat(y)))
+  abline(a=0,b=1,col="blue",lwd=2)
+  grid()
+  MSE= mean(residuos^2)
+  RMSE= sqrt(MSE)
+  R2= cor(y,pred)^2
+  return(list(MSE=MSE,RMSE=RMSE,R2=R2))
+}
+```
+
+\newpage
+
+ Comencemos definiendo un modelo con todas las variables.
+ 
+```{r,fig.height=3.5}
+modeloRL=lm(income~.,data=train_empleo)
+summary(modeloRL)
+predRL_test=predict(modeloRL,newdata=test_empleo)
+Ajuste(test_empleo$income ,predRL_test,"RL_todas")
+```
+
+ Hacemos lo mismo con los datos transformados mediante el uso de componentes principales.
+
+```{r,fig.height=3.5}
+modeloRL_acp=lm(income~.,data=train_empleo_acp)
+summary(modeloRL_acp)
+predRL_test_acp=predict(modeloRL_acp,newdata=test_empleo_acp)
+Ajuste(test_empleo_acp$income ,predRL_test_acp,"RL_acp_todas")
+```
+Se observa que, aunque sea totalmente razonable, resulta curioso. Hemos obtenido los mismos resultados usando las componentes principales y las variables originales (ambos parecen bastante malos).
+
+```{r,fig.height=3}
+boxplot(predRL_test_acp-predRL_test,col='lightblue')
+```
+
+
+Esto se debe a que al fin y al cabo las componentes principales son combinaciones lineales, las cuales las puede hacer el modelo lineal internamente. Pero puede merecer la pena usar estas componentes principales mas adelante, cuando seleccionemos variables. De todas formas hay un procedimiento que usa algo similar, pero pensado para aplicarlo en los modelos de regresión, regresión PLS (esto se hace por que al crear las componentes principales, no estamos teniendo en cuenta a la variable respuesta).
+
+### Exploración completa.
+ Tomemos todos los subconjuntos posibles de variables, y veamos que resultados se obtienen con ellos.
+```{r}
+library(leaps)
+#exploración completa con variables originales
+modeloRL_mejorsub=regsubsets(income~.,data=train_empleo,nvmax=8)
+#exploración completa con componentes principales
+modeloRL_mejorsub_acp=regsubsets(income~.,data=train_empleo_acp,nvmax=8)
+summary(modeloRL_mejorsub)
+summary(modeloRL_mejorsub_acp)
+```
+Para cada numero de variables posibles, toma el mejor conjunto. Usando tanto las variables originales como las componentes principales, cuando una variable esta entre las mejores para un numero determinado de variables, también lo está en los siguientes. Debido a esto, cuando hagamos la regresión hacia delante o hacia atrás, obtendremos los mismos resultados que con este método. 
+
+Veamos los coeficientes $R^2$ para los mejores subconjuntos obtenidos.
+```{r}
+resumen=summary(modeloRL_mejorsub)
+resumen$rsq #R2 aumenta con el número de predictores
+resumen_acp=summary(modeloRL_mejorsub_acp)
+resumen_acp$rsq #R2 aumenta con el número de predictores
+```
+ Representemos graficamente algunas medidas que penalicen la complejidad para distintos tamaños subconjuntos de variables.
+```{r, fig.height=4}
+plot(resumen$adjr2,type="l",col='blue',main='R2 ajustado')
+lines(resumen_acp$adjr2,type="l",col='red')
+legend(x=5,y=0.24,legend=c('Variables originales','componentes ppales'),
+       lty=c(1,1),col=c('blue','red'))
+```
+
+```{r, fig.height=4}
+plot(resumen$bic,type="l",col='blue',main='BIC',ylim=c(-140,-80))
+lines(resumen_acp$bic,type="l",col='red')
+legend(x=5,y=-125,legend=c('Variables originales','componentes ppales'),
+       lty=c(1,1),col=c('blue','red'))
+```
+
+Viendo estos graficos, ya si que parece que merece la pena usar componentes principales. Veamos cuales son las mejores variables según el criterio BIC.
+
+```{r}
+which.min(resumen$bic)
+which.min(resumen_acp$bic)
+
+compos<- which.min(resumen$bic)
+compos_acp<- which.min(resumen_acp$bic)
+vsel<- colnames(resumen$which)[resumen$which[compos,]]
+vsel_acp<- colnames(resumen_acp$which)[resumen_acp$which[compos_acp,]]
+vsel
+vsel_acp
+```
+Si usamos la transformación a componentes principales escogemos las tres primeras (mediante el criterio BIC), que además son las que mas varianza explican. Construyamos estos dos modelos para evaluarlos sobre el conjunto test.
+
+```{r}
+#tomamos las variables seleccionadas
+vsel=vsel[-1]#quitamos (Intercept)
+vsel_acp=vsel_acp[-1]
+#construimos las formulas de los modelos
+fmla <- as.formula(paste("income ~ ", paste(vsel, collapse= "+")))
+fmla_acp <- as.formula(paste("income ~ ", paste(vsel_acp, collapse= "+")))
+#construimos los modelos
+modeloRL_mej<- lm(fmla,data=train_empleo)
+modeloRL_mej_acp<- lm(fmla_acp,data=train_empleo_acp)
+#evaluamos sobre conjunto test
+predRLmej_test=predict(modeloRL_mej,newdata=test_empleo)
+predRLmej_test_acp=predict(modeloRL_mej_acp,newdata=test_empleo_acp)
+```
+
+\newpage
+
+```{r, fig.height=3}
+t(Ajuste(test_empleo$income,predRLmej_test,"leaps: mejor subconjunto"))
+t(Ajuste(test_empleo_acp$income,predRLmej_test_acp,"leaps: mejor subconjunto sobre cp"))
+```
+
+Apesar de que no tenemos buenos resultados en ninguno de los dos modelos, estos parecen algo mejores usando componentes principales, y en cualquier caso, ambos mejoran los resultados de los modelos que utilizán todas las variables.
+
+### Regresión lineal: "forward".
+Mediante este algoritmo en cada paso aumentamos en una variable nuestro modelo, eligiendo aquella que mejor resultados da al incluirse junto con las anteriores.
+```{r}
+modeloRL_fw=regsubsets(income~.,data=train_empleo,
+                       nvmax=8,method="forward")
+modeloRL_fw_acp=regsubsets(income~.,data=train_empleo_acp,
+                       nvmax=8,method="forward")
+summary(modeloRL_fw)
+summary(modeloRL_fw_acp)
+resumen=summary(modeloRL_fw)
+resumen_acp=summary(modeloRL_fw_acp)
+```
+
+ Tal como dijimos anteriormente, obtenemos los mismos resultados que con la busqueda exhaustiva de combinaciones de variables. De modo que no hace falta que veamos que medidas de bondad tenemos con dichas variables, pues son las mismas que las calculadas en el paso anterior.
+
+### Regresión lineal: "backward".
+
+Cabe esperar que volvamos a obtener los mismos resultados que con los dos metodos anteriores de busqueda, comprovemoslo.
+
+```{r}
+modeloRL_bw=regsubsets(income~.,data=train_empleo,
+                       nvmax=8,method="backward")
+modeloRL_bw_acp=regsubsets(income~.,data=train_empleo_acp,
+                       nvmax=8,method="backward")
+summary(modeloRL_bw)
+summary(modeloRL_bw_acp)
+resumen=summary(modeloRL_bw)
+resumen_acp=summary(modeloRL_bw_acp)
+```
+Efectivamente, los subconjuntos de variables son los mismos, de modo que no hace falta comprobar medidas de bondad de ajuste, esto ya se hizo en la busqueda exhaustiva sobre subconjuntos de variables.
+
+### Regresión lineal: "seqrep".
+
+ Veamos que subconjuntos se escogen con el método hacia delante y hacia atrás.
+```{r}
+modeloRL_seq=regsubsets(income~.,data=train_empleo,
+                       nvmax=8,method="seqrep")
+modeloRL_seq_acp=regsubsets(income~.,data=train_empleo_acp,
+                       nvmax=8,method="seqrep")
+summary(modeloRL_seq)
+summary(modeloRL_seq_acp)
+resumen=summary(modeloRL_seq)
+resumen_acp=summary(modeloRL_seq_acp)
+```
+
+ Sorprendentemente, esta vez no obtenemos los mismos resultados que con los métodos anteriores. Veamos entonces diversas medidas que penalicen la complejidad usando los resultados obtenidos.
+ 
+tamaños subconjuntos de variables.
+```{r, fig.height=4}
+plot(resumen$adjr2,type="l",col='blue',main='R2 ajustado')
+lines(resumen_acp$adjr2,type="l",col='red')
+legend(x=5,y=0.24,legend=c('Variables originales','componentes ppales'),
+       lty=c(1,1),col=c('blue','red'))
+```
+
+```{r, fig.height=4}
+plot(resumen$bic,type="l",col='blue',main='BIC',ylim=c(-140,-80))
+lines(resumen_acp$bic,type="l",col='red')
+legend(x=5,y=-125,legend=c('Variables originales','componentes ppales'),
+       lty=c(1,1),col=c('blue','red'))
+```
+
+ Ademas de haber obtenido unos subconjuntos inesperados, vemos que la curva produce tambien un pico un tanto extraño para los modelos en los que no usamos componentes principales.
+ 
+ Basemonos en el criterio BIC para ver que subconjunto parece apropiado para crear un modelo lineal.
+```{r}
+which.min(resumen$bic)
+which.min(resumen_acp$bic)
+
+compos<- which.min(resumen$bic)
+compos_acp<- which.min(resumen_acp$bic)
+vsel<- colnames(resumen$which)[resumen$which[compos,]]
+vsel_acp<- colnames(resumen_acp$which)[resumen_acp$which[compos_acp,]]
+vsel
+vsel_acp
+```
+
+Tomaríamos las mismas variables que en la busqueda exhaustiva, luego no hace falta generar de nuevo los modelos.
+
+\newpage
+
+### Selección de variables mediante algoritmos genéticos.
+ 
+ Carguemos una librería que permite el uso de estos algoritmos para seleccionar variables. Necesitamos ademas definir una función (fitnes), que indique los parametros de los modelos a ajustar, esta toma valores 0 y 1 para indicar si una variable se usa o no. A su vez, necesitamos dividir los datos en variables predictoras y en  variable respuesta. Hagamos todo esto para los datos usando las variables originales y usando las componentes principales.
+ 
+```{r, message=FALSE, warning=FALSE}
+library(GA)
+
+xent <- model.matrix(modeloRL)[,-1] 
+yent <- model.response(model.frame(modeloRL))
+
+xent_acp <- model.matrix(modeloRL_acp)[,-1] 
+yent_acp <- model.response(model.frame(modeloRL_acp))
+
+fitness <- function(string)  
+{ 
+  inc <- which(string==1)
+  X <- cbind(1, xent[,inc])
+  mod <- lm.fit(X, yent)
+  class(mod) <- "lm"
+  -AIC(mod)   #ga es para maximizar
+}
+
+fitness_acp <- function(string)  
+{ 
+  inc <- which(string==1)
+  X <- cbind(1, xent_acp[,inc])
+  mod <- lm.fit(X, yent_acp)
+  class(mod) <- "lm"
+  -AIC(mod)   #ga es para maximizar
+}
+```
+
+Ya podemos aplicar la busqueda de subconjuntos de variables mediante algoritmos genéticos.
+
+```{r}
+AG <- ga("binary", fitness = fitness, nBits = ncol(xent), 
+         names = colnames(xent), monitor = F,
+         popSize=100)
+AG_acp <- ga("binary", fitness = fitness_acp, nBits = ncol(xent_acp), 
+         names = colnames(xent_acp), monitor = F,
+         popSize=100)
+```
+
+\newpage
+
+```{r, fig.height=4}
+
+plot(AG, main= 'AG con variables originales')
+plot(AG_acp, main= 'AG con cp')
+summary(AG)
+summary(AG_acp)
+```
+
+Tomemos las variables elegidas, y evaluemos los modelos resultantes de usarlas para regresiones lineales
+
+```{r}
+#Modelo con las variables seleccionadas
+vsel=colnames(AG@solution)[AG@solution==1]
+vsel_acp=colnames(AG_acp@solution)[AG_acp@solution==1]
+
+fmla <- as.formula(paste("income ~ ", paste(vsel, collapse= "+")))
+fmla_acp <- as.formula(paste("income ~ ", paste(vsel_acp, collapse= "+")))
+fmla
+fmla_acp
+modeloRL_AG<- lm(fmla,data=train_empleo)
+modeloRL_AG_acp<- lm(fmla_acp,data=train_empleo_acp)
+summary(modeloRL_AG) 
+summary(modeloRL_AG_acp) 
+predRLAG_test=predict(modeloRL_AG,newdata=test_empleo)
+predRLAG_test_acp=predict(modeloRL_AG_acp,newdata=test_empleo_acp)
+```
+ 
+ Veamos que bondad de ajuste tenemos usando los modelos que acabamos de construir sobre los datos test.
+ 
+```{r, fig.height=3.1}
+t(Ajuste(test_empleo$income,predRLAG_test,"AG"))
+t(Ajuste(test_empleo_acp$income,predRLAG_test_acp,"AG usando cp"))
+```
+
+Esta seleccion es algo peor que la obtenida mediante una busqueda exhaustiva. Aun así, usando componentes principales, el resultado es practicamente idéntico.
+
+\newpage
+
+# Ejercicio 3. 
+
+### Completar la construcción de un árbol de clasificación correspondiente al fichero de instrucciones “EjemploLABrpart_default.r”, dentro del material correspondiente a Árboles de Clasificación y Regresión.
+
+
+### Variables del conjunto de datos:
+default (No/Yes): el cliente presenta números rojos en la tarjeta de crédito
+
+student (No/Yes)
+
+balance:saldo medio tras el pago mensual
+
+income: ingresos
+
+### Objetivos:
+
+El objetivo es construir un clasificador que prediga si un cliente presenta numeros rojos en la tarjeta de crédito. El banco prefiere evitar tarjetas "deudoras", se va a conisderar una matriz de costes. Coste de clasificar No como Yes es 5 veces superior a clasificar Yes como No. 
+
+ Construir un árbol de clasificación considerando los costes mencionados y aplicando el prodceimiento de recorte 1-ES. Evaluar el modelo (acierto, sensitividad, especificidad).
+
+
+
+ Carguemos las librerias que utilizarémos para trabajar con arboles
+```{r}
+library(rpart)
+library(rpart.plot)
+```
+
+### Lectura de datos y pequeño análisis exploratorio.
+
+```{r}
+Default=read.table(file=
+  "C:/Users/AlvaroSanchez91/Desktop/Master Big Data Sevilla/ML1 Machine Learning I/6. Árboles de Clasificación y Regresión/Transparencias y ejemplos/Default.txt"
+                   ,header=TRUE)
+```
+ Antes de dividir el conjunto de datos en entrenamiento y test, parece razonable hacer un rapido analisis exploratorio del mismo.
+ 
+```{r,fig.height=3.5}
+Default2=within(Default, {default <- as.numeric(default)-1
+  student <- as.numeric(student)-1})
+R=cor(Default2)#no es lo mas apropiado
+library(corrplot)
+corrplot(R, method = 'ellipse')
+head(Default)
+dim(Default)
+for (i in 1:4){
+  hist(Default2[,i], 
+       col = 'lightblue', xlab = colnames(Default)[i],
+       main=paste('Histograma de ', colnames(Default)[i]))
+}
+
+for (i in 3:4){
+  boxplot(Default[,i], col = 'lightblue', 
+          xlab = colnames(Default)[i],
+          main=paste('Boxplot de ', colnames(Default)[i]))
+}
+
+sum(is.na(Default))
+```
+
+
+
+ 
+Definamos la matriz de costes.
+
+```{r}
+L=matrix(c(0,1,5,0),2,2)
+rownames(L)=colnames(L)=levels(Default$default)
+L
+```
+
+### Separacion en conjuntos de entrenamiento y test.
+
+```{r}
+set.seed(123)
+n<- nrow(Default)
+nent<- ceiling(0.7*n)
+indient=sample(n,nent)
+
+train=Default[indient,]
+test=Default[-indient,]
+```
+
+### Primer arbol de clasificación.
+
+Creamos un arbol de clasificación sobre los datos de entrenamiento indicando la matriz de costes definida.
+
+```{r}
+default.rpart_complete <- rpart(default~., data=train, 
+                     method="class",cp=0,parms=list(loss=L))
+```
+ Podemos ver las reglas que hemos generado tras ajustar el modelo.
+```{r}
+default.rpart_complete
+```
+
+
+Esto no resulta nada facil de leer, de modo que podemos recurrir a una grafica que nos ayude.
+
+```{r}
+rpart.plot(default.rpart_complete,main="Arbol con datos Default",
+     uniform=TRUE)
+```
+ 
+### Regla 1-ES. 
+ 
+ Veamos unos errores que nos da la propia función para distintos valores del parametro de complegidad cp. Este influye a la hora de decidir si dividir un nodo, cuanto mayor sea mas penalizará dividir un nodo lejano de la raiz. Así que podremos controlar el tamaño del arbol y, por tanto, el sobreajuste.
+```{r}
+printcp(default.rpart_complete,digits=3)
+plotcp(default.rpart_complete,lty=2,upper="splits",col="blue")
+```
+ 
+
+ Mediante la regla 1-ES elegimos el parametro de complejidad cp, pues no es recomendable tomar directamente aquel que tiene un error de validación cruzada menor. Se tiene en cuenta la varianza de dichos errores de validación cruzada para elegir el parametro.
+ 
+```{r}
+#Tabla con las estimaciones VC
+cptabla<- default.rpart_complete$cptable
+#Regla 1-ES
+CP1ES<- min(cptabla[,4])+cptabla[which.min(cptabla[,4]),5] 
+CP1ES
+cptabla[cptabla[,4]<CP1ES,]
+cprecorte<- cptabla[cptabla[,4]<CP1ES,][1]
+cprecorte
+```
+Recortemos el arbol original tomando este cp.
+
+```{r}
+default.rpart1es<-prune.rpart(default.rpart_complete,cp=cprecorte) 
+default.rpart1es
+rpart.plot(default.rpart1es,main="Arbol recortado",uniform=TRUE)
+```
+
+Este metodo nos lleva a un arbol consistente en una única division sobre la variable balance. Veamos una nuve de puntos para ver si este corte basandose en solo una variable es razonable.
+
+\newpage
+
+```{r,fig.height=3.5, fig.height=3.5, warning=FALSE}
+library(ggplot2)
+ggplot(data=Default,aes(x=income,y=balance,color=default))+
+  geom_point()+facet_wrap(~student,labeller = "label_both")+
+  ggtitle("Datos completos.")+geom_hline(yintercept=1492)
+
+ 
+ggplot(data=train,aes(x=income,y=balance,color=default))+
+  geom_point()+facet_wrap(~student,labeller = "label_both")+
+  ggtitle('Datos de entrenamiento')+geom_hline(yintercept=1492)
+```
+Aparte de balance, podríamos decir que student afectaría ligeramente. Pero en general se ve como un separador tan simple parece razonable.
+
+\newpage
+
+### Evaluación del modelo.
+ Veamos que tal se comporta el modelo sobre el conjunto test.
+
+```{r}
+predicciones=predict(default.rpart1es,test, type = 'class')
+valor_real=test$default
+matriz_confusion=table(valor_real,predicciones)
+matriz_confusion
+
+prop.table(matriz_confusion, 1)
+diag(prop.table(matriz_confusion, 1))#Especificidad y sensibilidad respectivamente.
+```
+Vemos que tenemos mayor especificidad que sensibilidad, lo cual es razonable, ya que damos mas importancia a tener un falso positivo que un falso negativo.
+
+```{r}
+sum(diag(prop.table(matriz_confusion)))
+```
+Tenemos un acierto totla del 81%.
+
+Area bajo la curva operativa caracteristica:
+
+```{r, message=FALSE, warning=FALSE}
+library(ROCR)
+probabi<- predict(default.rpart1es,test,type="prob")[,2] #Prob. yes
+prediobj<-prediction(probabi,test$default)
+plot(performance(prediobj, "tpr","fpr"),main="CURVA COR TEST")
+abline(a=0,b=1,col="blue",lty=2)
+auc<- as.numeric(performance(prediobj,"auc")@y.values)
+cat("AUC test= ",auc ,"\n")
+```
+
+Observemos que nuestro arblol, al ser tan simple, solo da dos opciones de probabilidades (una para cada clasificación). Por esto, al hacer la curva roc tenemos este único pico. En cualquier caso, la medida AUC parece relativamente buena.
+
+### Calcular en el conjunto test el indicador EMC:
+#### Expected Miscalssification cost=P[No]P[Yes/No]coste[Yes/No]+P[Yes]P[No/Yes]coste[No/Yes]
+
+```{r}
+P_No=prop.table(table(Default$default))[1]#P[No]
+P_Yes=prop.table(table(Default$default))[2]#P[Yes]
+P_Yes.No=(1-diag(prop.table(matriz_confusion, 1)))[1]#P[Yes/No]
+P_No.Yes=(1-diag(prop.table(matriz_confusion, 1)))[2]#P[No/Yes]
+cost_Yes.No=L[2,1]#coste[Yes/No]
+cost_No.Yes=L[1,2]#coste[No/Yes]
+
+EMC=as.numeric(P_No*P_Yes.No*cost_Yes.No+P_Yes*P_No.Yes*cost_No.Yes)
+EMC
+```
+
+

@@ -59,7 +59,7 @@ pueden afectar a algunos metodos.
 
     boxplot(datos2, axes=T,cex.axis=0.5,col='lightblue')
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-3-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-3-1.png)
 
     atipicos=data.frame()
     outliers=c()
@@ -86,11 +86,11 @@ tanto teniendo o no en cuenta a DC.
     library(corrplot)
     corrplot(cor(datos),addCoef.col="black")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-5-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-5-1.png)
 
     corrplot(cor(datos_sin_out),addCoef.col="black")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-5-2.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-5-2.png)
 
 \newpage
 
@@ -122,7 +122,7 @@ Metodos jerarquicos sobre datos estandarizados.
     jer=hclust(d)#Aplicamos un algoritmo aglomerativo con un metodo de unión simple.
     plot(jer, cex=0.5)
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-7-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-7-1.png)
 Lo primero que observamos es que DC (el valor que hemos tomado como
 atipico) lo separa drasticamente del resto de valores, y solo se agrupa
 en el ultimo paso. Necesitamos decidir si hay un numero apropiado de
@@ -152,12 +152,12 @@ cuatro clusters.
     plot(jer,main="Dendrograma", cex=0.5,hang = -1)
     rect.hclust(jer, k=4,border="red")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-9-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-9-1.png)
 
     plot(jer,main="Dendrograma", cex=0.5,hang = -1)
     rect.hclust(jer, k=3,border="red")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-9-2.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-9-2.png)
 
 Hagamos el mismo proceso pero utilizando otra función de R, agnes. Esta
 a su vez proporciona un grafico de las alturas (banner), bastante util.
@@ -168,7 +168,7 @@ a su vez proporciona un grafico de las alturas (banner), bastante util.
     plot(jer1,which.plots=c(2),main="Dendrograma",cex=0.25)
     plot(jer1,which.plots=c(1),main="Banner")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-10-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-10-1.png)
 
     par(mfrow=c(1,1))
 
@@ -196,7 +196,7 @@ a su vez proporciona un grafico de las alturas (banner), bastante util.
     plot(jer2,which.plots=c(2), cex=0.25,main="Dendrograma")
     plot(jer2,which.plots=c(1),main="Banner")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-11-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-11-1.png)
 
     par(mfrow=c(1,1))
 
@@ -230,33 +230,33 @@ Métodos de partición.
     kmedias$centers
 
     ##     Asesinato      Abusos      Atraco  AgresiÃ³n Robo_domicilio      Hurto
-    ## 1 -0.60433142 -0.85530840 -0.71760700 -0.8625740    -0.91235428 -0.6229332
-    ## 2  0.87380966  1.11745387  0.91693437  1.0335396     1.14017264  1.0960816
+    ## 1  0.87380966  1.11745387  0.91693437  1.0335396     1.14017264  1.0960816
+    ## 2 -0.60433142 -0.85530840 -0.71760700 -0.8625740    -0.91235428 -0.6229332
     ## 3 -0.06378228  0.02152249  0.03738277  0.1092741     0.07153099 -0.2489100
     ##   Robo_vehÃ.culo
-    ## 1     -0.8543079
-    ## 2      0.7787957
+    ## 1      0.7787957
+    ## 2     -0.8543079
     ## 3      0.3377639
 
     #Vector de n componentes indicando el cluster al que se asigna  cada punto
     kmedias$cluster
 
     ## ME NH VT MA RI CT NY NJ PA OH IN IL MI WI MN IA MO ND SD NE KS DE MD DC VA 
-    ##  1  1  1  3  3  3  2  3  1  3  1  3  2  1  1  1  3  1  1  1  3  3  2  2  1 
+    ##  2  2  2  3  3  3  1  3  2  3  2  3  1  2  2  2  3  2  2  2  3  3  1  1  2 
     ## WV NC SC GA FL KY TN AL MS AR LA OK TX MT ID WY CO NM AZ UT NV WA OR CA AK 
-    ##  1  3  3  3  2  1  3  3  1  1  2  3  2  1  1  1  2  2  2  1  2  2  2  2  2 
+    ##  2  3  3  3  1  2  3  3  2  2  1  3  1  2  2  2  1  1  1  2  1  1  1  1  1 
     ## HI 
     ##  3
 
     #Número de puntos en cada cluster  
     kmedias$size
 
-    ## [1] 20 15 16
+    ## [1] 15 20 16
 
 \newpage
     plot(as.data.frame(datos2),col=c(1,2,3)[kmedias$cluster])
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-13-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-13-1.png)
 
 El anterior algoritmo es inestable ante valores atipicos, por lo que
 sería recomendable utilizar el algoritmo de k-medioides o eliminar DC
@@ -266,7 +266,7 @@ igual a dos y no consideramos DC.
     kmedias2=kmeans(datos_sin_out2,2)
     plot(as.data.frame(datos_sin_out2),col=kmedias2$cluster)
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-14-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-14-1.png)
 
 Si se repite varias veces el proceso de k-medias descrito anteriormente
 (con DC incluido en los datos), llegamos a divisiones muy distintas
@@ -282,7 +282,7 @@ tres.
     kmedioides=pam(datos2,3)
     plot(kmedioides)
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-15-1.png)![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-15-2.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-15-1.png)![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-15-2.png)
 
 \newpage
 Este metodo proporciona una medida de silueta, la cual es bastante mala
@@ -293,11 +293,11 @@ un único cluster.
     kmedioides=pam(datos2,2)
     plot(kmedioides)
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-16-1.png)![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-16-2.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-16-1.png)![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-16-2.png)
 
     plot(datos,col=c(1,2,3,4)[kmedioides$cluster])
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-17-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-17-1.png)
 
 Podemos probar, al igual que hicimos con el metodo de k-medias, a
 eliminar DC del analisis de conglomerados. Veamos si de este modo mejora
@@ -306,11 +306,11 @@ la silueta media.
     kmedioides2=pam(datos_sin_out2,2)
     plot(kmedioides2)
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-18-1.png)![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-18-2.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-18-1.png)![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-18-2.png)
 
     plot(as.data.frame(datos_sin_out2),col=kmedioides2$cluster)
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-19-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-19-1.png)
 
 Curiosamente, la medida de silueta empeora si no consideramos DC en el
 analisis mediante k-medioides. Esta vale 0.39, mientras que la anterior,
@@ -358,11 +358,11 @@ para decidir que partición tomar.
 \newpage
     plot(clus_Mix,what = "BIC")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-22-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-22-1.png)
 
     plot(clus_Mix_sin_out,what = "BIC")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-22-2.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-22-2.png)
 
 Vemos que en general, para todos los modelos, parece mejor considerar DC
 en el estudio (aparentemente, las escalas son distintas). Si solo
@@ -406,11 +406,11 @@ Veamos graficamente como quedarian los datos clasificados.
 
     plot(clus_Mix,what = "classification")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-24-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-24-1.png)
 
     plot(clus_Mix_sin_out,what = "classification")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-24-2.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-24-2.png)
 
 Comparación de distintos metodos.
 ---------------------------------
@@ -556,7 +556,7 @@ principales, es ver que pinta tiene nuestra matriz de correlaciones.
     library(corrplot)
     corrplot(cor(datos_empleo2),addCoef.col="black")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-31-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-31-1.png)
 
 En lugar de abordar directamente el problema diagonalizando esta matriz,
 podemos recurrir a una función de PCAmixdata para facilitar los
@@ -708,7 +708,7 @@ que vamos a trabajar mediante un procedimiento gráfico.
     plot(acp,col="blue",main="Condiciones de trabajo.") 
     abline(h=mean(resumen[,1]),lwd=2,lty=2,col="red")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-38-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-38-1.png)
 El grafico muestra las varianzas de cada una de las componentes
 principales, recordemos que al haber trabajado con la matriz de
 correlaciones, la media de estas varianzas es uno. De este modo, la
@@ -756,7 +756,7 @@ facil de entender.
 
     corrplot(correlaciones[,1:4],method="ellipse",addCoef.col="black")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-41-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-41-1.png)
 
 Viendo esto, podriamos pensar, por ejemplo, que si tenemos un elemento
 con un valor alto para la cuarta componente principal, es facil que
@@ -772,7 +772,7 @@ componente principal.
 
     boxplot(acp$scores,col="lightblue",notched=TRUE)
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-42-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-42-1.png)
 
 Vemos que hay componentes con bastantes valores perdidos.
 
@@ -818,7 +818,7 @@ las correlaciones residuales.
 
     corrplot(Resid2)
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-44-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-44-1.png)
 Parece que la aproximación es buena, los resuduos mas altos se
 encuentran en la diagonal, esto se debe a que quedaba relativamente
 bastante varivilidad por explicar.
@@ -1076,7 +1076,7 @@ dimensiones.
          coloring.ind=X2$baker ,label=FALSE,
          posleg="bottomright", main="Observations")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-56-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-56-1.png)
 Hemos pintado los puntos de distintos colores en función de la variable
 baker. Vemos que estas dos dimensiones separan bastante bien estos
 casos. Parece que las categorías de esta variable realmente vienen de
@@ -1087,7 +1087,7 @@ relaccionada con la dimensión 1.
          coloring.ind=X2$postoffice ,label=FALSE,
          posleg="bottomright", main="Observations")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-57-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-57-1.png)
 
 Es la misma nuve de puntos pero identificando los puntos en función de
 la variable post ofice. Parece que si la primera dimension es positiva o
@@ -1102,7 +1102,7 @@ dos primeras dimensiones.
          axes=c(1,2),xlim=c(-2,3.5),cex=0.7, 
          main="Levels")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-58-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-58-1.png)
 
 Se aprecia rapidamente como las etiquetas correspondientes a los valores
 nulos se agrupan a la izquierda de la grafica. Además, el resto de
@@ -1118,7 +1118,7 @@ variables cuantitativas.
     plot(res.pcamix,choice="cor",axes=c(1,2),
          main="Numerical variables")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-59-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-59-1.png)
 Se aprecia como algunas variables se parecen, como income y managers,
 las cuales a su vez parecen tener una relacción inversa con la variable
 workers. De hecho, siendo menos exigentes, podemos apreciar tres grupos
@@ -1133,7 +1133,7 @@ cualitativas y cuantitativas.
          xlim=c(-0.1,1.05),posleg="topright", 
          main="All variables")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-60-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-60-1.png)
 
 Aquí se podría apreciar como se relaccionan algunas variables con las
 dimensiones del análisis de componentes principales y deducir de esto
@@ -1197,7 +1197,7 @@ variables.
     plot(acp_train,col="blue",main="Condiciones de trabajo.") 
     abline(h=1,lwd=2,lty=2,col="red")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-63-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-63-1.png)
 En esta ocasión tenemos evidentemente una componente principal menos.
 
 ### Modelos de regresión lineal con todas las variables.
@@ -1252,7 +1252,7 @@ Comencemos definiendo un modelo con todas las variables.
     predRL_test=predict(modeloRL,newdata=test_empleo)
     Ajuste(test_empleo$income ,predRL_test,"RL_todas")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-65-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-65-1.png)
 
     ## $MSE
     ## [1] 0.418813
@@ -1298,7 +1298,7 @@ componentes principales.
     predRL_test_acp=predict(modeloRL_acp,newdata=test_empleo_acp)
     Ajuste(test_empleo_acp$income ,predRL_test_acp,"RL_acp_todas")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-66-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-66-1.png)
 
     ## $MSE
     ## [1] 0.418813
@@ -1315,7 +1315,7 @@ variables originales (ambos parecen bastante malos).
 
     boxplot(predRL_test_acp-predRL_test,col='lightblue')
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-67-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-67-1.png)
 
 Esto se debe a que al fin y al cabo las componentes principales son
 combinaciones lineales, las cuales las puede hacer el modelo lineal
@@ -1427,14 +1427,14 @@ para distintos tamaños subconjuntos de variables.
     legend(x=5,y=0.24,legend=c('Variables originales','componentes ppales'),
            lty=c(1,1),col=c('blue','red'))
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-70-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-70-1.png)
 
     plot(resumen$bic,type="l",col='blue',main='BIC',ylim=c(-140,-80))
     lines(resumen_acp$bic,type="l",col='red')
     legend(x=5,y=-125,legend=c('Variables originales','componentes ppales'),
            lty=c(1,1),col=c('blue','red'))
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-71-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-71-1.png)
 
 Viendo estos graficos, ya si que parece que merece la pena usar
 componentes principales. Veamos cuales son las mejores variables según
@@ -1481,14 +1481,14 @@ conjunto test.
 \newpage
     t(Ajuste(test_empleo$income,predRLmej_test,"leaps: mejor subconjunto"))
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-74-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-74-1.png)
 
     ##      MSE      RMSE      R2      
     ## [1,] 0.408528 0.6391619 0.473628
 
     t(Ajuste(test_empleo_acp$income,predRLmej_test_acp,"leaps: mejor subconjunto sobre cp"))
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-74-2.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-74-2.png)
 
     ##      MSE       RMSE      R2       
     ## [1,] 0.4028893 0.6347356 0.4843665
@@ -1744,14 +1744,14 @@ tamaños subconjuntos de variables.
     legend(x=5,y=0.24,legend=c('Variables originales','componentes ppales'),
            lty=c(1,1),col=c('blue','red'))
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-78-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-78-1.png)
 
     plot(resumen$bic,type="l",col='blue',main='BIC',ylim=c(-140,-80))
     lines(resumen_acp$bic,type="l",col='red')
     legend(x=5,y=-125,legend=c('Variables originales','componentes ppales'),
            lty=c(1,1),col=c('blue','red'))
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-79-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-79-1.png)
 
 Ademas de haber obtenido unos subconjuntos inesperados, vemos que la
 curva produce tambien un pico un tanto extraño para los modelos en los
@@ -1833,11 +1833,11 @@ algoritmos genéticos.
 \newpage
     plot(AG, main= 'AG con variables originales')
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-83-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-83-1.png)
 
     plot(AG_acp, main= 'AG con cp')
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-83-2.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-83-2.png)
 
     summary(AG)
 
@@ -1960,14 +1960,14 @@ construir sobre los datos test.
 
     t(Ajuste(test_empleo$income,predRLAG_test,"AG"))
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-85-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-85-1.png)
 
     ##      MSE       RMSE      R2       
     ## [1,] 0.4286738 0.6547319 0.4477575
 
     t(Ajuste(test_empleo_acp$income,predRLAG_test_acp,"AG usando cp"))
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-85-2.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-85-2.png)
 
     ##      MSE       RMSE      R2      
     ## [1,] 0.4031733 0.6349593 0.480607
@@ -2025,7 +2025,7 @@ razonable hacer un rapido analisis exploratorio del mismo.
     library(corrplot)
     corrplot(R, method = 'ellipse')
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-88-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-88-1.png)
 
     head(Default)
 
@@ -2047,7 +2047,7 @@ razonable hacer un rapido analisis exploratorio del mismo.
            main=paste('Histograma de ', colnames(Default)[i]))
     }
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-88-2.png)![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-88-3.png)![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-88-4.png)![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-88-5.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-88-2.png)![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-88-3.png)![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-88-4.png)![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-88-5.png)
 
     for (i in 3:4){
       boxplot(Default[,i], col = 'lightblue', 
@@ -2055,7 +2055,7 @@ razonable hacer un rapido analisis exploratorio del mismo.
               main=paste('Boxplot de ', colnames(Default)[i]))
     }
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-88-6.png)![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-88-7.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-88-6.png)![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-88-7.png)
 
     sum(is.na(Default))
 
@@ -2138,7 +2138,7 @@ grafica que nos ayude.
     rpart.plot(default.rpart_complete,main="Arbol con datos Default",
          uniform=TRUE)
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-93-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-93-1.png)
 
 ### Regla 1-ES.
 
@@ -2171,7 +2171,7 @@ el sobreajuste.
 
     plotcp(default.rpart_complete,lty=2,upper="splits",col="blue")
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-94-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-94-1.png)
 
 Mediante la regla 1-ES elegimos el parametro de complejidad cp, pues no
 es recomendable tomar directamente aquel que tiene un error de
@@ -2213,7 +2213,7 @@ Recortemos el arbol original tomando este cp.
 
     rpart.plot(default.rpart1es,main="Arbol recortado",uniform=TRUE)
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-96-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-96-1.png)
 
 Este metodo nos lleva a un arbol consistente en una única division sobre
 la variable balance. Veamos una nuve de puntos para ver si este corte
@@ -2225,13 +2225,13 @@ basandose en solo una variable es razonable.
       geom_point()+facet_wrap(~student,labeller = "label_both")+
       ggtitle("Datos completos.")+geom_hline(yintercept=1492)
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-97-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-97-1.png)
 
     ggplot(data=train,aes(x=income,y=balance,color=default))+
       geom_point()+facet_wrap(~student,labeller = "label_both")+
       ggtitle('Datos de entrenamiento')+geom_hline(yintercept=1492)
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-97-2.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-97-2.png)
 Aparte de balance, podríamos decir que student afectaría ligeramente.
 Pero en general se ve como un separador tan simple parece razonable.
 
@@ -2280,7 +2280,7 @@ Area bajo la curva operativa caracteristica:
     plot(performance(prediobj, "tpr","fpr"),main="CURVA COR TEST")
     abline(a=0,b=1,col="blue",lty=2)
 
-![](AlvaroSanchezCastanneda_ML1_files/figure-markdown_strict/unnamed-chunk-100-1.png)
+![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-100-1.png)
 
     auc<- as.numeric(performance(prediobj,"auc")@y.values)
     cat("AUC test= ",auc ,"\n")
