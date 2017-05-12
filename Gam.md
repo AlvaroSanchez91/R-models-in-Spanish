@@ -63,7 +63,7 @@ Carguemos los datos y hagamos un pequeño analisis exploratorio.
 
     plot(Auto$mpg)
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-1-1.png)
+![](Gam_files/figure-markdown_strict/unnamed-chunk-1-1.png)
 
 Ahora transformemolos tal como indica el ejercicio.
 
@@ -427,16 +427,16 @@ opccion (polinomio, spline,...) para cada variable.
 
     plot(cbind(datos2$Grad.Rate,datos2$Private))
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-13-1.png)
-Codifica privada y no privada con 2 y 1 respectivamente. Creemos a mano
-una variable dummy.
+![](Gam_files/figure-markdown_strict/unnamed-chunk-13-1.png) Codifica
+privada y no privada con 2 y 1 respectivamente. Creemos a mano una
+variable dummy.
 
     datos2=within(datos2, Private<-as.numeric(datos2$Private)-1)
     mod1=gam(Grad.Rate~ Private, data = datos2)
     plot(cbind(datos2$Private,datos2$Grad.Rate))
     lines(rbind(datos2[1,],datos2['Angelo State University',])$Private,predict(mod1, newdata=rbind(datos2[1,],datos2['Angelo State University',])), col='red')
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-14-1.png)
+![](Gam_files/figure-markdown_strict/unnamed-chunk-14-1.png)
 
     datos2[datos2$Grad.Rate>100,]
 
@@ -606,7 +606,7 @@ grado cuatro. Veamos graficamente como son estas funciones regresoras.
     lines(cbind(datos_falsos$Apps,predict(mod2.3,newdata = datos_falsos)), col='orange')
     lines(cbind(datos_falsos$Apps,predict(mod2.4,newdata = datos_falsos)), col='green')
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-17-1.png)
+![](Gam_files/figure-markdown_strict/unnamed-chunk-17-1.png)
 
 Naturalmente, descartamos el uso de polinomios de grado cuatro, ya que
 se sale de los valores posibles de la variable, Por lo demas, son muy
@@ -799,10 +799,10 @@ Solo descarta la asumcion de que los modelos son iguales para grados 3 y
     lines(cbind(datos_falsos$Accept,predict(mod3.3,newdata = datos_falsos)), col='orange')
     lines(cbind(datos_falsos$Accept,predict(mod3.4,newdata = datos_falsos)), col='green')
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-20-1.png)
-Parece que para grados 3 y cuatro lo que tenemos es un sobreajuste, no
-es conveniente usar dichos modelos. No hay ningun indicio que nos lleve
-a pensar en splines, pero tal vez podriamos probar algunos. Usaremos
+![](Gam_files/figure-markdown_strict/unnamed-chunk-20-1.png) Parece que
+para grados 3 y cuatro lo que tenemos es un sobreajuste, no es
+conveniente usar dichos modelos. No hay ningun indicio que nos lleve a
+pensar en splines, pero tal vez podriamos probar algunos. Usaremos
 notacion similar a la usada hasta ahora, modn.sk (s indica splines
 suavizados, bs splines cubicos, ns splines naturales).
 
@@ -822,7 +822,7 @@ de un gam.
     lines(cbind(datos_falsos$Accept,predict(mod3.s,newdata = datos_falsos)), col='purple')
     lines(cbind(datos_falsos$Accept,predict(mod3.s5,newdata = datos_falsos)), col='yellow')
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-22-1.png)
+![](Gam_files/figure-markdown_strict/unnamed-chunk-22-1.png)
 
     summary(mod3.s)
 
@@ -1290,7 +1290,7 @@ Parece entonces que lo mejor es tomar splines suavizados.
     lines(cbind(datos_falsos$Enroll,predict(mod4.s,newdata = datos_falsos)), col='purple')
     lines(cbind(datos_falsos$Enroll,predict(mod4.s5,newdata = datos_falsos)), col='yellow')
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-27-1.png)
+![](Gam_files/figure-markdown_strict/unnamed-chunk-27-1.png)
 
 Parece que lo mejor es usar polinomios de grado 3 o splines.
 
@@ -1826,7 +1826,7 @@ Parece razonable volver a tomar splines suavizados.
     ## Warning in predict.lm(object, newdata, se.fit, scale = 1, type =
     ## ifelse(type == : prediction from a rank-deficient fit may be misleading
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-30-1.png)
+![](Gam_files/figure-markdown_strict/unnamed-chunk-30-1.png)
 
     modc5=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+Top10perc, data = datos2)
     modc5.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+poly(Top10perc,2), data = datos2)
@@ -2080,7 +2080,7 @@ suavizados.
     lines(cbind(datos_falsos$Top25perc,predict(mod6.s5,newdata = datos_falsos)), col='purple')
     lines(cbind(datos_falsos$Top25perc,predict(mod6.s10,newdata = datos_falsos)), col='pink')
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-32-1.png)
+![](Gam_files/figure-markdown_strict/unnamed-chunk-32-1.png)
 
 A la vista de los datos, tal vez tenga sentido usar un spline con un
 nodo de manera que diferencie los datos con valores muy bajos de
@@ -2130,7 +2130,7 @@ correspondiente universidad).
 
     lines(cbind(datos_falsos$Top25perc,predict(mod6.s,newdata = datos_falsos)), col='orange')
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-33-1.png)
+![](Gam_files/figure-markdown_strict/unnamed-chunk-33-1.png)
 
 Todo indica que es mejor usar el spline suavizado, que el que acabamos
 de construir. Ademas, tiene mejores propiedades (intervalos de
@@ -2391,7 +2391,7 @@ Tomemos el modelo con el nudo fijado.
     lines(cbind(datos_falsos$F.Undergrad,predict(mod7.s5,newdata = datos_falsos)), col='purple')
     lines(cbind(datos_falsos$F.Undergrad,predict(mod7.s10,newdata = datos_falsos)), col='pink')
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-36-1.png)
+![](Gam_files/figure-markdown_strict/unnamed-chunk-36-1.png)
 
     modc7=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+F.Undergrad, data = datos2)
     modc7.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+ poly(F.Undergrad,2), data = datos2)
@@ -2653,7 +2653,7 @@ Quizas escojamos la regresion por medio de polinomios de grado dos.
     lines(cbind(datos_falsos$P.Undergrad,predict(mod8.s5,newdata = datos_falsos)), col='purple')
     lines(cbind(datos_falsos$P.Undergrad,predict(mod8.s10,newdata = datos_falsos)), col='pink')
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-39-1.png)
+![](Gam_files/figure-markdown_strict/unnamed-chunk-39-1.png)
 
     modc8=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) +P.Undergrad, data = datos2)
     modc8.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2), data = datos2)
@@ -2940,7 +2940,7 @@ regresor lineal simple puede dar valores extraños en ese intervalo.
     lines(cbind(datos_falsos$Outstate,predict(mod9.s5,newdata = datos_falsos)), col='purple')
     lines(cbind(datos_falsos$Outstate,predict(mod9.s10,newdata = datos_falsos)), col='pink')
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-42-1.png)
+![](Gam_files/figure-markdown_strict/unnamed-chunk-42-1.png)
 
     modc9=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate, data = datos2)
     modc9.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +poly(Outstate,2), data = datos2)
@@ -3222,7 +3222,7 @@ En este caso parece suficiente con añadir la regresion simple.
     lines(cbind(datos_falsos$Room.Board,predict(mod10.s5,newdata = datos_falsos)), col='purple')
     lines(cbind(datos_falsos$Room.Board,predict(mod10.s10,newdata = datos_falsos)), col='pink')
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-43-1.png)
+![](Gam_files/figure-markdown_strict/unnamed-chunk-43-1.png)
 
     modc10=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board, data = datos2)
     modc10.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate + poly(Room.Board,2), data = datos2)
@@ -3491,7 +3491,7 @@ debe a un sobreajuste.
     lines(cbind(datos_falsos$Books,predict(mod11.s5,newdata = datos_falsos)), col='purple')
     lines(cbind(datos_falsos$Books,predict(mod11.s10,newdata = datos_falsos)), col='pink')
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-45-1.png)
+![](Gam_files/figure-markdown_strict/unnamed-chunk-45-1.png)
 
     modc11=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books, data = datos2)
     modc11.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +poly(Books,2), data = datos2)
@@ -3778,7 +3778,7 @@ relevante (es posible que simplemente añadamos ruido).
     lines(cbind(datos_falsos$Personal,predict(mod12.s5,newdata = datos_falsos)), col='purple')
     lines(cbind(datos_falsos$Personal,predict(mod12.s10,newdata = datos_falsos)), col='pink')
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-46-1.png)
+![](Gam_files/figure-markdown_strict/unnamed-chunk-46-1.png)
 
     modc12=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+Personal, data = datos2)
     modc12.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+poly(Personal,2), data = datos2)
@@ -4065,7 +4065,7 @@ Vistos los aic, usaremos splines suavizados.
     lines(cbind(datos_falsos$PhD,predict(mod13.s5,newdata = datos_falsos)), col='purple')
     lines(cbind(datos_falsos$PhD,predict(mod13.s10,newdata = datos_falsos)), col='pink')
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-48-1.png)
+![](Gam_files/figure-markdown_strict/unnamed-chunk-48-1.png)
 
     modc13=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+PhD, data = datos2)
     modc13.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(PhD,2), data = datos2)
@@ -4357,7 +4357,7 @@ no la añadiremos.
     lines(cbind(datos_falsos$Terminal,predict(mod14.s5,newdata = datos_falsos)), col='purple')
     lines(cbind(datos_falsos$Terminal,predict(mod14.s10,newdata = datos_falsos)), col='pink')
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-50-1.png)
+![](Gam_files/figure-markdown_strict/unnamed-chunk-50-1.png)
 
     modc14=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+Terminal, data = datos2)
     modc14.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(Terminal,2), data = datos2)
@@ -4637,7 +4637,7 @@ No es necesario añadir esta variable a nuestro modelo.
     lines(cbind(datos_falsos$S.F.Ratio,predict(mod15.s5,newdata = datos_falsos)), col='purple')
     lines(cbind(datos_falsos$S.F.Ratio,predict(mod15.s10,newdata = datos_falsos)), col='pink')
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-52-1.png)
+![](Gam_files/figure-markdown_strict/unnamed-chunk-52-1.png)
 
     modc15=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+S.F.Ratio, data = datos2)
     modc15.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2), data = datos2)
@@ -4927,7 +4927,7 @@ Parece una buena opcion usar polinomios de grado dos.
     lines(cbind(datos_falsos$perc.alumni,predict(mod16.s5,newdata = datos_falsos)), col='purple')
     lines(cbind(datos_falsos$perc.alumni,predict(mod16.s10,newdata = datos_falsos)), col='pink')
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-54-1.png)
+![](Gam_files/figure-markdown_strict/unnamed-chunk-54-1.png)
 
     modc16=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2)+perc.alumni, data = datos2)
     modc16.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2)+poly(perc.alumni,2), data = datos2)
@@ -5227,7 +5227,7 @@ En este caso usaremos splines suavizados.
     ## c(3186, : some 'x' values beyond boundary knots may cause ill-conditioned
     ## bases
 
-![](ejercicio_splines_files/figure-markdown_strict/unnamed-chunk-56-1.png)
+![](Gam_files/figure-markdown_strict/unnamed-chunk-56-1.png)
 
     modc17=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2)+s(perc.alumni)+Expend, data = datos2)
     modc17.2=gam(Grad.Rate~ Private+Apps+s(Accept)+s(Enroll)+s(Top10perc) + bs(Top25perc ,knots =c(30) )+s(F.Undergrad) + poly(P.Undergrad,2) +Outstate +Room.Board +Books+s(Personal)+poly(S.F.Ratio,2)+s(perc.alumni)+poly(Expend,2), data = datos2)

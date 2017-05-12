@@ -118,7 +118,7 @@ Problema de clasificación.
 
     plot(fit.train1)
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-3-1.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-3-1.png)
 
 Mediante validación cruzada, los errores minimos se obtienen al aplicar
 el algoritmos con el nucleo "optimal", y con *k* = 10. Veamos los
@@ -197,13 +197,13 @@ Graficas de acuracidad y soporte medio para cada paso:
     plot(datosrknn.selG$mean_accuracy,type="l", xlab="Paso", ylab="Acuracidad media",
          main="medida de acuracidad en cada paso. Etapa Geométrica")
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-10-1.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-10-1.png)
 
     plot(datosrknn.selG$mean_support,type="l", xlab="Paso", ylab="Soporte medio",
          main="Soporte medio en cada paso. Etapa Geométrica")
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-10-2.png)
-Variables del paso anterior a la mejor seleccion:
+![](Knn_files/figure-markdown_strict/unnamed-chunk-10-2.png) Variables
+del paso anterior a la mejor seleccion:
 
     (mejorselgeo <- prebestset(datosrknn.selG, criterion="mean_support"))
 
@@ -220,16 +220,16 @@ Apliquemosle a dichas variables una selección lineal.
     plot(datosrknn.selLIN$mean_accuracy,type="l", xlab="Paso", ylab="Acuracidad media",
          main="medida de acuracidad en cada paso. Etapa Lineal")
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-12-1.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-12-1.png)
 
     plot(datosrknn.selLIN$mean_support,type="l", xlab="Paso", ylab="Soporte medio",
          main="Soporte medio en cada paso. Etapa Lineal")
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-12-2.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-12-2.png)
 
     plot(datosrknn.selLIN$mean_support,datosrknn.selLIN$mean_accuracy)
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-12-3.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-12-3.png)
 
 Elijamos entonces el paso con mejor soporte medio (coincide con el de
 mejor acuracidad).
@@ -272,7 +272,7 @@ Veamos cuales son el mejor nucleo y el mejor k.
 
     plot(fit.train_sel)
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-15-1.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-15-1.png)
 
 Matriz de confusión:
 
@@ -323,8 +323,8 @@ Problema de regresión.
 
     plot(train.con,main="Error cuadrático medio para los posibles nucleos y k. " ) 
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-19-1.png)
-Tomamos *k* = 4 y el nucleo triangular, mejor opcion segun el metodo de
+![](Knn_files/figure-markdown_strict/unnamed-chunk-19-1.png) Tomamos
+*k* = 4 y el nucleo triangular, mejor opcion segun el metodo de
 validación cruzada. Veamos que resultados obtenemos al predecir sobre el
 conjunto test.
 
@@ -333,7 +333,7 @@ conjunto test.
          main='Valor real vs prediccion')
     abline(a=0,b=1)
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-20-1.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-20-1.png)
 
 ECM para el conjunto test:
 
@@ -365,7 +365,7 @@ Observemos la grafica para medir la bondad de este modelo.
          main='Valor real vs prediccion')
     abline(a=0,b=1)
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-24-1.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-24-1.png)
 
 ECM sobre los datos test:
 
@@ -406,12 +406,12 @@ Numero de variables de la mejor selección.
     plot(datosrknn.selG$mean_accuracy,type="l", xlab="Paso", ylab="Acuracidad media",
          main="medida de acuracidad en cada paso. Etapa Geométrica")
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-28-1.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-28-1.png)
 
     plot(datosrknn.selG$mean_support,type="l", xlab="Paso", ylab="Soporte medio",
          main="Soporte medio en cada paso. Etapa Geométrica")
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-28-2.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-28-2.png)
 
     (mejorselgeo <- prebestset(datosrknn.selG, criterion="mean_support"))
 
@@ -434,16 +434,16 @@ Seleccionamos linealmente partiendo de la anterior selección geometrica.
     plot(datosrknn.selLIN$mean_accuracy,type="l", xlab="Paso", ylab="Acuracidad media",
          main="medida de acuracidad en cada paso. Etapa Lineal")
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-29-1.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-29-1.png)
 
     plot(datosrknn.selLIN$mean_support,type="l", xlab="Paso", ylab="Soporte medio",
          main="Soporte medio en cada paso. Etapa Lineal")
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-29-2.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-29-2.png)
 
     plot(datosrknn.selLIN$mean_support,datosrknn.selLIN$mean_accuracy)
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-29-3.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-29-3.png)
 
     bestset(datosrknn.selLIN, criterion="mean_support")
 
@@ -479,7 +479,7 @@ Ahora predizcamos basandonos unicamente es las variables seleccionadas.
 
     plot(train.knn.sel,main="Error cuadrático medio para los posibles nucleos y k. " ) 
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-30-1.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-30-1.png)
 
 Veamos que tal predice este modelo sobre el conjunto test.
 
@@ -489,7 +489,7 @@ Veamos que tal predice este modelo sobre el conjunto test.
          main='Valor real vs prediccion')
     abline(a=0,b=1)
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-31-1.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-31-1.png)
 
 ECM en datos test:
 
@@ -513,8 +513,8 @@ Veamos que tal predice este modelo:
          main='Valor real vs prediccion')
     abline(a=0,b=1)
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-34-1.png)
-ECM en datos test:
+![](Knn_files/figure-markdown_strict/unnamed-chunk-34-1.png) ECM en
+datos test:
 
     (ecm_rknn_sel=sum((datosrknn.sel$pred-test_trans$varobj)^2)/length(test_trans$varobj))
 
@@ -542,7 +542,7 @@ entrenamiento.
 
     lim=min( boxplot(test_trans$varobj)$out)
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-37-1.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-37-1.png)
 
     test_trans2=test_trans[test_trans$varobj<lim,]
 
@@ -588,7 +588,7 @@ eliminados estos datos atipicos.
 
     lim=min( boxplot(train$varobj)$out)
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-43-1.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-43-1.png)
 
     train=train[train$varobj<lim,]
     varianzas=apply(train[-c(1,2)],2, var)
@@ -604,7 +604,7 @@ eliminados estos datos atipicos.
 
     lim=min( boxplot(test_trans$varobj)$out)
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-43-2.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-43-2.png)
 
     test_trans2=test_trans[test_trans$varobj<lim,]#Test sin outliers.
 
@@ -627,7 +627,7 @@ eliminados estos datos atipicos.
 
     plot(train.con.out,main="Error cuadrático medio para los posibles nucleos y k. " ) 
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-44-1.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-44-1.png)
 
     predicciones_test=predict(train.con.out, newdata = test_trans)
     predicciones_test2=predict(train.con.out, newdata = test_trans2)
@@ -691,12 +691,12 @@ las mejores variables.
     plot(datosrknn.selG$mean_accuracy,type="l", xlab="Paso", ylab="Acuracidad media",
          main="medida de acuracidad en cada paso. Etapa Geométrica")
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-51-1.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-51-1.png)
 
     plot(datosrknn.selG$mean_support,type="l", xlab="Paso", ylab="Soporte medio",
          main="Soporte medio en cada paso. Etapa Geométrica")
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-51-2.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-51-2.png)
 
     (mejorselgeo <- prebestset(datosrknn.selG, criterion="mean_support"))
 
@@ -715,16 +715,16 @@ Seleccionamos linealmente partiendo de la anterior selección geometrica.
     plot(datosrknn.selLIN$mean_accuracy,type="l", xlab="Paso", ylab="Acuracidad media",
          main="medida de acuracidad en cada paso. Etapa Lineal")
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-52-1.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-52-1.png)
 
     plot(datosrknn.selLIN$mean_support,type="l", xlab="Paso", ylab="Soporte medio",
          main="Soporte medio en cada paso. Etapa Lineal")
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-52-2.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-52-2.png)
 
     plot(datosrknn.selLIN$mean_support,datosrknn.selLIN$mean_accuracy)
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-52-3.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-52-3.png)
 
     bestset(datosrknn.selLIN, criterion="mean_support")
 
@@ -760,7 +760,7 @@ Seleccionamos linealmente partiendo de la anterior selección geometrica.
 
     plot(train.knn.sel,main="Error cuadrático medio para los posibles nucleos y k. " ) 
 
-![](ejercicio_knn_informe_files/figure-markdown_strict/unnamed-chunk-53-1.png)
+![](Knn_files/figure-markdown_strict/unnamed-chunk-53-1.png)
 
     predicciones_test=predict(train.knn.sel, newdata = test_trans)
     predicciones_test2=predict(train.knn.sel, newdata = test_trans2)

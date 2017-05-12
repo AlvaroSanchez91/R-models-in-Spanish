@@ -7,11 +7,11 @@ I recomend reading the .md documents in the web, and download the .Rmd to run it
 
 Diferents data sets are used here to show examples of clustering, principal components analysis, and decision trees.
 
-## ejercicion_knn_informe
+## Knn
 Using "datawork.csv" we have to do two predictive models, one of regression, and the other of clasification (we use
 two diferent columns to do that).
 
-## ejercicio_splines
+## Gam
 
 ### Exercise 1:
 Using the data Auto from the library ISLR, we have to make a predictive model. We should use a generalized linear model (such as poisson model).
