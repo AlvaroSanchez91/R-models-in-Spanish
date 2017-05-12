@@ -66,8 +66,6 @@ corrplot(cor(datos_sin_out),addCoef.col="black")
 ```
 
 
-
-\newpage
  Los resultados obtenidos parecen razonables. Observemos a su vez que aunque alguna correlacion parece algo elevada, no lo es tanto como para plantearse eliminar variables directamente.
 
  Veamos a continuación que todas nuestras variables son reales, lo cual nos permitirá posteriormente hacer analisis de conglomerados mediante la distancia euclídea.
@@ -75,7 +73,7 @@ corrplot(cor(datos_sin_out),addCoef.col="black")
 head(datos)
 ```
 
-\newpage
+
 
 ## Metodos jerarquicos sobre datos estandarizados.
 ### Metodo aglomerativo.
@@ -146,7 +144,7 @@ print(tail(cbind(jer2$merge,h2,coeficientes2)))
  Hemos repetido los mismos pasos que en el algoritmo aglomerativo y, esta vez, parece que tres clusters es la mejor opción.
 
 
-\newpage
+
 
 ## Métodos de partición.
 
@@ -163,7 +161,7 @@ kmedias$cluster
 #Número de puntos en cada cluster  
 kmedias$size
 ```
-\newpage
+
 
 ```{r,fig.height = 3.5}
 plot(as.data.frame(datos2),col=c(1,2,3)[kmedias$cluster])
@@ -175,7 +173,7 @@ kmedias2=kmeans(datos_sin_out2,2)
 plot(as.data.frame(datos_sin_out2),col=kmedias2$cluster)
 ```
 
- \newpage
+
  
  Si se repite varias veces el proceso de k-medias descrito anteriormente (con DC incluido en los datos), llegamos a divisiones muy distintas (algunas de ellas separan a DC). Se muestra mas estable el algoritmo sin considerar DC, pero otra solución pasa por aplicar el algoritmo de k-medioides, que es mas estable ante estas situaciones.
  
@@ -187,7 +185,7 @@ kmedioides=pam(datos2,3)
 plot(kmedioides)
 ```
 
-\newpage
+
 
  Este metodo proporciona una medida de silueta, la cual es bastante mala para k igual a tres. Tomemos k igual a dos ,lo cual es razonable teniendo en cuenta que en el proceso jerarquico DC quedaba separado en un único cluster.
 
@@ -196,20 +194,20 @@ plot(kmedioides)
 kmedioides=pam(datos2,2)
 plot(kmedioides)
 ```
-\newpage
+
 ```{r,fig.height = 3}
 plot(datos,col=c(1,2,3,4)[kmedioides$cluster])
 ```
 
 
 Podemos probar, al igual que hicimos con el metodo de k-medias, a eliminar DC del analisis de conglomerados. Veamos si de este modo mejora la silueta media.
-\newpage
+
 
 ```{r,fig.height = 3}
 kmedioides2=pam(datos_sin_out2,2)
 plot(kmedioides2)
 ```
-\newpage
+
 ```{r,fig.height = 3}
 plot(as.data.frame(datos_sin_out2),col=kmedioides2$cluster)
 ```
@@ -233,7 +231,7 @@ clus_Mix_sin_out=Mclust(datos_sin_out2)
 ```
  Este comando ejecuta distintos metodos para modelar las distribuciones normales (suponiendo igual tamaño de las normales, igual orientación, etc) y tambien toma varios k distintos. Para cada uno de los resultados obtenidos nos devuelve un criterio de incertidumbre BIC que podemos usar para decidir que partición tomar.
 
-\newpage
+
 ```{r,fig.height=4}
 plot(clus_Mix,what = "BIC")
 plot(clus_Mix_sin_out,what = "BIC")
@@ -248,12 +246,12 @@ summary(clus_Mix_sin_out)
 ```
 
 Sería ligeramente mejor el procedimiento habiendo tomado en cuenta a DC (al igual que pasaba con el metodo de k-medioides). Vemos que en ese caso el mejor metodo usa normales "elipsoidales" de "igual forma". Veamos graficamente como quedarian los datos clasificados.
-\newpage
+
 ```{r,fig.height=4}
 plot(clus_Mix,what = "classification")
 plot(clus_Mix_sin_out,what = "classification")
 ```
-\newpage
+
 
 ## Comparación de distintos metodos.
 
@@ -294,7 +292,7 @@ dim(clasificaciones_aux)
 
 
 
-\newpage
+
 
 # Ejercicio 2. 
 
@@ -421,7 +419,7 @@ corrplot(correlaciones[,1:4],method="ellipse",addCoef.col="black")
 
 Viendo esto, podriamos pensar, por ejemplo, que si tenemos un elemento con un valor alto para la cuarta componente principal, es facil que tenga un valor alto para la variable tradesmen. Otra posible interpretación, algo mas arriesgada, es ver si las distintas variables se parecen en sus correlaciones a las componentes principales, y pensar por lo tanto, que se parecen entre si. Es decir, buscar "grupos" de variables parecidas.
 
-\newpage
+
 
 Podemos usar graficos de caja y bigote para ver la variabilidad de cada componente principal.
 
@@ -452,7 +450,7 @@ corrplot(Resid2)
 ```
  Parece que la aproximación es buena, los resuduos mas altos se encuentran en la diagonal, esto se debe a que quedaba relativamente bastante varivilidad por explicar.
  
-\newpage
+
 
 ##ii) Realizar e interpretar un análisis de componentes principales para datos mixtos sobre la unión de gironde\$employment y gironde\$services.
 
@@ -575,7 +573,7 @@ plot(res.pcamix,choice="levels",
 
 Se aprecia rapidamente como las etiquetas correspondientes a los valores nulos se agrupan a la izquierda de la grafica. Además, el resto de etiquetas parece que tambien se agrupan en valores medios y valores altos, siendo ambas dimensiones mayores para etiquetas correspondientes a valores mas altos (si dejamos de lado a las correspondientes a valores nulos).
 
-\newpage
+
 
  Veamos ahora una representación de las 'correlaciones' entre las variables cuantitativas.
 
@@ -596,7 +594,7 @@ plot(res.pcamix,choice="sqload",axes=c(1,2),
 
 Aquí se podría apreciar como se relaccionan algunas variables con las dimensiones del análisis de componentes principales y deducir de esto relacciones entre ellas. Lo primero que salta a la vista, es que las variables categoricas toman valores mas altos y, por lo tanto, están mas relaccionadas con estas dos dimensiones (mirar tabla de porcentajes de inercia repartida entre las variables para cada dimensión). Por otro lado podemos tratar de ver algunas de estas relacciones, vemos por ejemplo que la variable workers se relacciona bastante con la segunda dimensión, mientras que farmers lo hace con la primera (en la grafica anterior, al igual que en esta, se observa como son perpendiculares, de lo que se deduciría que son mas o menos independientes), esto podríamos hacerlo con mas variables. Por último, se puede apreciar como en general, las variables categoricas parecen estar mas relaccionadas entre sí que las numericas, aunque evidentemente se aprecian grupos como el formado por doctor dentist y baker.
 
-\newpage
+
 
 ##  iii) Aplicar procedimientos de selección de variables para construir modelos de regresión lineal donde income es la variable dependiente, sobre gironde\$employment.
 
@@ -658,7 +656,7 @@ Ajuste<- function(y,pred,titulo)
 }
 ```
 
-\newpage
+
 
  Comencemos definiendo un modelo con todas las variables.
  
@@ -751,7 +749,7 @@ predRLmej_test=predict(modeloRL_mej,newdata=test_empleo)
 predRLmej_test_acp=predict(modeloRL_mej_acp,newdata=test_empleo_acp)
 ```
 
-\newpage
+
 
 ```{r, fig.height=3}
 t(Ajuste(test_empleo$income,predRLmej_test,"leaps: mejor subconjunto"))
@@ -839,7 +837,7 @@ vsel_acp
 
 Tomaríamos las mismas variables que en la busqueda exhaustiva, luego no hace falta generar de nuevo los modelos.
 
-\newpage
+
 
 ### Selección de variables mediante algoritmos genéticos.
  
@@ -884,7 +882,7 @@ AG_acp <- ga("binary", fitness = fitness_acp, nBits = ncol(xent_acp),
          popSize=100)
 ```
 
-\newpage
+
 
 ```{r, fig.height=4}
 
@@ -922,7 +920,7 @@ t(Ajuste(test_empleo_acp$income,predRLAG_test_acp,"AG usando cp"))
 
 Esta seleccion es algo peor que la obtenida mediante una busqueda exhaustiva. Aun así, usando componentes principales, el resultado es practicamente idéntico.
 
-\newpage
+
 
 # Ejercicio 3. 
 
@@ -1059,7 +1057,7 @@ rpart.plot(default.rpart1es,main="Arbol recortado",uniform=TRUE)
 
 Este metodo nos lleva a un arbol consistente en una única division sobre la variable balance. Veamos una nuve de puntos para ver si este corte basandose en solo una variable es razonable.
 
-\newpage
+
 
 ```{r,fig.height=3.5, fig.height=3.5, warning=FALSE}
 library(ggplot2)
@@ -1074,7 +1072,7 @@ ggplot(data=train,aes(x=income,y=balance,color=default))+
 ```
 Aparte de balance, podríamos decir que student afectaría ligeramente. Pero en general se ve como un separador tan simple parece razonable.
 
-\newpage
+
 
 ### Evaluación del modelo.
  Veamos que tal se comporta el modelo sobre el conjunto test.

@@ -92,8 +92,6 @@ tanto teniendo o no en cuenta a DC.
 
 ![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-5-2.png)
 
-\newpage
-
 Los resultados obtenidos parecen razonables. Observemos a su vez que
 aunque alguna correlacion parece algo elevada, no lo es tanto como para
 plantearse eliminar variables directamente.
@@ -112,7 +110,6 @@ distancia euclídea.
     ## RI       3.5   21.4    119       192           1294  2568            705
     ## CT       4.6   23.8    192       205           1198  2758            447
 
-\newpage
 Metodos jerarquicos sobre datos estandarizados.
 -----------------------------------------------
 
@@ -218,7 +215,6 @@ a su vez proporciona un grafico de las alturas (banner), bastante util.
 Hemos repetido los mismos pasos que en el algoritmo aglomerativo y, esta
 vez, parece que tres clusters es la mejor opción.
 
-\newpage
 Métodos de partición.
 ---------------------
 
@@ -229,31 +225,30 @@ Métodos de partición.
     #centros de los clusters
     kmedias$centers
 
-    ##     Asesinato      Abusos      Atraco  AgresiÃ³n Robo_domicilio      Hurto
-    ## 1  0.87380966  1.11745387  0.91693437  1.0335396     1.14017264  1.0960816
-    ## 2 -0.60433142 -0.85530840 -0.71760700 -0.8625740    -0.91235428 -0.6229332
-    ## 3 -0.06378228  0.02152249  0.03738277  0.1092741     0.07153099 -0.2489100
+    ##     Asesinato     Abusos     Atraco  AgresiÃ³n Robo_domicilio      Hurto
+    ## 1  0.06553776  0.1053938  0.3775696  0.3328899     0.07188661 -0.2957222
+    ## 2  0.92523160  1.2594647  0.7734511  1.0160813     1.29682833  1.2628879
+    ## 3 -0.56569901 -0.7806064 -0.6834090 -0.7914089    -0.77987250 -0.5209439
     ##   Robo_vehÃ.culo
-    ## 1      0.7787957
-    ## 2     -0.8543079
-    ## 3      0.3377639
+    ## 1      0.5933648
+    ## 2      0.7629724
+    ## 3     -0.8182223
 
     #Vector de n componentes indicando el cluster al que se asigna  cada punto
     kmedias$cluster
 
     ## ME NH VT MA RI CT NY NJ PA OH IN IL MI WI MN IA MO ND SD NE KS DE MD DC VA 
-    ##  2  2  2  3  3  3  1  3  2  3  2  3  1  2  2  2  3  2  2  2  3  3  1  1  2 
+    ##  3  3  3  1  1  1  1  1  3  1  3  1  2  3  3  3  1  3  3  3  3  1  1  2  3 
     ## WV NC SC GA FL KY TN AL MS AR LA OK TX MT ID WY CO NM AZ UT NV WA OR CA AK 
-    ##  2  3  3  3  1  2  3  3  2  2  1  3  1  2  2  2  1  1  1  2  1  1  1  1  1 
+    ##  3  3  1  1  2  3  1  1  3  3  2  1  2  3  3  3  2  2  2  3  2  2  2  2  2 
     ## HI 
     ##  3
 
     #Número de puntos en cada cluster  
     kmedias$size
 
-    ## [1] 15 20 16
+    ## [1] 15 13 23
 
-\newpage
     plot(as.data.frame(datos2),col=c(1,2,3)[kmedias$cluster])
 
 ![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-13-1.png)
@@ -284,7 +279,6 @@ tres.
 
 ![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-15-1.png)![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-15-2.png)
 
-\newpage
 Este metodo proporciona una medida de silueta, la cual es bastante mala
 para k igual a tres. Tomemos k igual a dos ,lo cual es razonable
 teniendo en cuenta que en el proceso jerarquico DC quedaba separado en
@@ -355,7 +349,6 @@ etc) y tambien toma varios k distintos. Para cada uno de los resultados
 obtenidos nos devuelve un criterio de incertidumbre BIC que podemos usar
 para decidir que partición tomar.
 
-\newpage
     plot(clus_Mix,what = "BIC")
 
 ![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-22-1.png)
@@ -490,7 +483,6 @@ hora de decantarse por una partición es mejor no usar un metodo
 jerarquico, lo razonable parece elejir la obtenida mediante mixturas o
 mediante k-medioides.
 
-\newpage
 Ejercicio 2.
 ============
 
@@ -766,7 +758,6 @@ se parecen en sus correlaciones a las componentes principales, y pensar
 por lo tanto, que se parecen entre si. Es decir, buscar "grupos" de
 variables parecidas.
 
-\newpage
 Podemos usar graficos de caja y bigote para ver la variabilidad de cada
 componente principal.
 
@@ -823,7 +814,6 @@ Parece que la aproximación es buena, los resuduos mas altos se
 encuentran en la diagonal, esto se debe a que quedaba relativamente
 bastante varivilidad por explicar.
 
-\newpage
 ii) Realizar e interpretar un análisis de componentes principales para datos mixtos sobre la unión de gironde$employment y gironde$services.
 --------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -1111,7 +1101,6 @@ altos, siendo ambas dimensiones mayores para etiquetas correspondientes
 a valores mas altos (si dejamos de lado a las correspondientes a valores
 nulos).
 
-\newpage
 Veamos ahora una representación de las 'correlaciones' entre las
 variables cuantitativas.
 
@@ -1151,7 +1140,6 @@ general, las variables categoricas parecen estar mas relaccionadas entre
 sí que las numericas, aunque evidentemente se aprecian grupos como el
 formado por doctor dentist y baker.
 
-\newpage
 iii) Aplicar procedimientos de selección de variables para construir modelos de regresión lineal donde income es la variable dependiente, sobre gironde$employment.
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -1217,7 +1205,6 @@ evalue que tal se comportan sobre el conjunto test.
       return(list(MSE=MSE,RMSE=RMSE,R2=R2))
     }
 
-\newpage
 Comencemos definiendo un modelo con todas las variables.
 
     modeloRL=lm(income~.,data=train_empleo)
@@ -1478,7 +1465,6 @@ conjunto test.
     predRLmej_test=predict(modeloRL_mej,newdata=test_empleo)
     predRLmej_test_acp=predict(modeloRL_mej_acp,newdata=test_empleo_acp)
 
-\newpage
     t(Ajuste(test_empleo$income,predRLmej_test,"leaps: mejor subconjunto"))
 
 ![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-74-1.png)
@@ -1783,7 +1769,6 @@ para crear un modelo lineal.
 Tomaríamos las mismas variables que en la busqueda exhaustiva, luego no
 hace falta generar de nuevo los modelos.
 
-\newpage
 ### Selección de variables mediante algoritmos genéticos.
 
 Carguemos una librería que permite el uso de estos algoritmos para
@@ -1830,7 +1815,6 @@ algoritmos genéticos.
              names = colnames(xent_acp), monitor = F,
              popSize=100)
 
-\newpage
     plot(AG, main= 'AG con variables originales')
 
 ![](Cluster_PC_Tree_files/figure-markdown_strict/unnamed-chunk-83-1.png)
@@ -1976,7 +1960,6 @@ Esta seleccion es algo peor que la obtenida mediante una busqueda
 exhaustiva. Aun así, usando componentes principales, el resultado es
 practicamente idéntico.
 
-\newpage
 Ejercicio 3.
 ============
 
@@ -2219,7 +2202,6 @@ Este metodo nos lleva a un arbol consistente en una única division sobre
 la variable balance. Veamos una nuve de puntos para ver si este corte
 basandose en solo una variable es razonable.
 
-\newpage
     library(ggplot2)
     ggplot(data=Default,aes(x=income,y=balance,color=default))+
       geom_point()+facet_wrap(~student,labeller = "label_both")+
@@ -2235,7 +2217,6 @@ basandose en solo una variable es razonable.
 Aparte de balance, podríamos decir que student afectaría ligeramente.
 Pero en general se ve como un separador tan simple parece razonable.
 
-\newpage
 ### Evaluación del modelo.
 
 Veamos que tal se comporta el modelo sobre el conjunto test.
