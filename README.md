@@ -5,7 +5,8 @@ I recomend reading the .md documents in the web, and download the .Rmd to run it
 
 ## Cluster_PC_Tree
 
-Diferents data sets are used here to show examples of clustering, principal components analysis, and decision trees.
+We can see an example of clustering analysis of Crimen.dat. Various techniques of dimensionality reduction are shown in the second part, using data prvided by a package of R.
+In the last exercise we use the data Default.txt to construct diferents decision trees.
 
 ## Knn
 Using "datawork.csv" we have to do two predictive models, one of regression, and the other of clasification (we use
