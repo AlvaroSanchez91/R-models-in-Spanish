@@ -26,3 +26,7 @@ two diferent columns to do that).
 
  Using the data Auto from the library ISLR, we have to make a predictive model. We should use a generalized linear model (such as poisson model).
 In the second part of the document, we use the data college of the library ISLR, we have to make a gam model in order to predict the Grad.Rate variable.
+
+## Unbalanced
+
+ We have to make a predictive model, clasification, but one class is much larger than the other. We use diferent techniques in order to deal with unbalanced data (Insolvencia.RData).

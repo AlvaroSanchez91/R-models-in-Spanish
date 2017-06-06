@@ -1,0 +1,561 @@
+---
+title: "ML II:  Trabajo de evaluación de los temas 1,2, 6 y 7"
+author: "Álvaro Sánchez Castañeda"
+date: "29 de mayo de 2017"
+output: md_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Ejercicio 3:
+### Completar el tratamiento de los datos de Insolvencia mediante técnicas apropiadas para Clasificación No Balanceada (datos en el material de dicho tema).
+
+## Lectura de datos y librerias.
+```{r, message=FALSE, warning=FALSE}
+load("Insolvencia.RData")
+library(caret)#ajuste de modelos, medidas, etc
+library(pROC)#curva roc y diversas medidas
+library(randomForest)#Random Forest
+library(DMwR)#SMOTE
+```
+
+Nuestro objetivo será predicir la variable *failed_insolvent* en función del resto de variables.
+
+## Breve analisis exploratório.
+
+```{r}
+dim(datos)
+head(datos)
+```
+Usaremos tant conjunto de validaciónr como validación cruzada para elegir los parametros de los modelos.
+
+```{r,fig.height=3.5}
+table(datos$failed_insolvent) 
+prop.table(table(datos$failed_insolvent))
+barplot(table(datos$failed_insolvent))
+```
+
+Vemos que las clases a predicír estan desbalanceadas, llevarémos a cabo tecnicas propias de este tipo de situiaciones.
+
+## Preprocesado y particion de los datos.
+
+Al tener datos desbalanceados, en vez de tratar de mejorar la precisión, nos fijaremos en la sensitividad y especificidad. Lo mas usual es aumentar la sensitividad para la clase minoritaría y para esto, necesitamos que dicha clase sea la primera.
+```{r}
+datos$failed_insolvent = factor(as.character(datos$failed_insolvent),
+           levels = rev(levels(datos$failed_insolvent)))
+table(datos$failed_insolvent)
+```
+
+
+Dividamos los datos en los conjuntos train, test y validación.
+
+```{r}
+set.seed(156)
+n=nrow(datos)
+indices=1:n
+ient=sample(indices,floor(n*0.6))#60% train
+ival=sample(setdiff(indices,ient),floor(n*0.15))#15% validacion
+itest=setdiff(indices,union(ient,ival))#25% test
+
+training  = datos[ient,]
+validation  = datos[ival,]
+testing     = datos[itest,]
+training_valid=rbind(training,validation)#Validacion y train para optimizar parametros 
+Index= 1:nrow(training)#indice de train en training_valid
+```
+
+
+## Funciones evaluación.
+Definiremos unas funciones que evaluen los modelos usando diferentes métricas. 
+
+```{r}
+fiveStats = function(...) 
+  c(twoClassSummary(...), defaultSummary(...))
+
+fourStats = function (data, lev = levels(data$obs),#no devuelve auc
+                      model = NULL)
+{
+  
+  accKapp = postResample(data[, "pred"], data[, "obs"])
+  out = c(accKapp,
+          sensitivity(data[, "pred"], data[, "obs"], lev[1]),
+          specificity(data[, "pred"], data[, "obs"], lev[2]))
+  names(out)[3:4] = c("Sens", "Spec")
+  out
+}
+```
+
+En la siguiente tabla podemos guardar los resultados de los modelos.
+```{r}
+testResults = data.frame(failed_insolvent = testing$failed_insolvent)
+validResults = data.frame(failed_insolvent = validation$failed_insolvent)
+```
+
+
+# Modelos sobre datos originales.
+
+Utilizaremos tanto Random Forest como Regresión Logística para nuestros datos. 
+
+
+
+
+## Random Forest.
+
+Usando la libreria caret, trataremos de ajustar el parametro mtry. Esto podemos hacerlo de dos maneras, usando el conjunto de validación, o usando validación cruzada. Dado que nuestros datos están desvalanceados, trataremos de mejorar la sensitividad.
+
+```{r, message=FALSE}
+#Control para validacion cruzada
+ctrlcv = trainControl(method = "cv",number=5, 
+                      classProbs = TRUE,
+                      summaryFunction = fiveStats,
+                      verboseIter=F)
+
+#Control para conjunto de validacion
+ctrlval = trainControl(method = "cv",number=1,#una hoja (conjunto validacion)
+                       index=list(Index), #indicamos conjunto train
+                       indexFinal=Index,
+                       classProbs = TRUE,
+                       summaryFunction = fiveStats,
+                       verboseIter=F)
+```
+
+
+
+```{r, eval=FALSE}
+set.seed(1410)
+rfFit = train(failed_insolvent ~ ., data = training,
+              method = "rf",
+              trControl = ctrlcv,
+              ntree = 100,
+              do.trace=F,
+              tuneLength=5,
+              metric = "Sens") #Sensitividad
+```
+
+Ya que no tenemos muchos datos, parece que merece la pena hacer validación cruzada, el conjunto de validación lo usaremos posteriormente.
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+set.seed(1410)
+rfFit = train(failed_insolvent ~ ., data = training,
+              method = "rf",
+              trControl = ctrlcv,
+              ntree = 100,
+              do.trace=F,
+              tuneLength=5,
+              metric = "Sens") #Sensitividad
+```
+
+```{r}
+rfFit$results [c('mtry','ROC','Sens','Spec','Accuracy','Kappa')]
+```
+
+ Observamos que la sensibilidad de los modelos es muy mala para todos los parametros, aunque para algunos no vale cero. Guardemos las estimaciones de probabilidades sobre los datos test para calcular distintas medidas de bondad de ajuste.
+ 
+
+```{r, fig.height=3.5}
+validResults$RF = predict(rfFit, validation, #lo usaremos posteriormente
+                          type = "prob")[,1]
+testResults$RF = predict(rfFit, testing, 
+                         type = "prob")[,1]
+rfTestROC = roc(testResults$failed_insolvent, testResults$RF,
+                levels = rev(levels(testResults$failed_insolvent)))
+rfvalidROC = roc(validResults$failed_insolvent, validResults$RF,
+                levels = rev(levels(validResults$failed_insolvent)))
+rfTestCM = confusionMatrix(predict(rfFit, testing), 
+                           testResults$failed_insolvent)
+rfvalidCM = confusionMatrix(predict(rfFit, validation), 
+                           validResults$failed_insolvent)
+plot(rfTestROC,main='Random Forest')
+rfTestROC$auc
+rfTestCM$byClass
+```
+
+ Tanto la curva ROC, como la sensitividad o el area AUC nos indican que tenemos un modelo malo. Guardemos la especificidad y la sensibilidad sobre el conjunto test del modelo.
+ 
+```{r}
+evaluaciones=data.frame(t(rfTestCM$byClass[c('Sensitivity','Specificity')]))
+rownames(evaluaciones)='rf'
+```
+
+ 
+
+## Regresión Logística.
+No hay parámetros que ajustar, por lo que no será necesário urar validación cruzada o conjunto de validación.
+
+```{r}
+ctrlrlog = trainControl(method = "none", 
+                        classProbs = TRUE,
+                        summaryFunction = fiveStats)
+lrFit = train(failed_insolvent ~ .,
+              data = training,
+              method = "glm",
+              trControl = ctrlrlog)
+```
+
+Veamos que tal se comporta este modelo sobre el conjunto test.
+```{r, fig.height=3.5}
+validResults$LogReg = predict(lrFit, #lo usaremos posteriormente
+                              validation, 
+                              type = "prob")[,1]
+testResults$LogReg = predict(lrFit, 
+                             testing, 
+                             type = "prob")[,1]
+lrTestROC = roc(testResults$failed_insolvent, testResults$LogReg,
+                levels = rev(levels(testResults$failed_insolvent)))
+lrTestCM = confusionMatrix(predict(lrFit, testing), 
+                           testResults$failed_insolvent)
+lrvalidROC = roc(validResults$failed_insolvent, validResults$LogReg,
+                levels = rev(levels(validResults$failed_insolvent)))
+lrvalidCM = confusionMatrix(predict(lrFit, validation), 
+                           validResults$failed_insolvent)
+plot(lrTestROC,main="Regresion Logistica")
+lrTestROC$auc
+lrTestCM$byClass[c('Sensitivity','Specificity')]
+```
+ 
+ Con este modelo volvemos a obtener una sensibilidad nula, salvo el porcentaje de acierto, las medidas dan a entender que este modelo tampoco es util. Comparémoslo con el anterior.
+
+## Comparación de Random Forest y Regresión Logística.
+```{r}
+evaluacion=data.frame(t(lrTestCM$byClass[c('Sensitivity','Specificity')]))
+rownames(evaluacion)='lr'
+(evaluaciones=rbind(evaluaciones,evaluacion))
+```
+
+
+###Curvas ROC.
+
+
+```{r,fig.height=3.5}
+labs = c(RF = "Random Forest", LogReg = "Reg.Log.")
+plotTheme = caretTheme()  #CONFIGURACION DE COLORES
+plot(rfTestROC, type = "S", col = plotTheme$superpose.line$col[1], 
+     legacy.axes = TRUE, xlab="1 - Especificidad",ylab="Sensitividad")
+plot(lrTestROC, type = "S", col = plotTheme$superpose.line$col[2],
+     add = TRUE, legacy.axes = TRUE)
+legend("bottomright",
+       c("Test RF", "Test Reg. Log."), cex = .85,
+       col = plotTheme$superpose.line$col[1:2],lwd = rep(2, 2),lty = rep(1, 2))
+grid()
+```
+
+
+###Curvas Lift.
+
+ El paquete caret es el que proporciona la siguiente función. Su interpretación es similar a la de las curvas ROC.
+
+```{r}
+lift1 = lift(failed_insolvent ~ RF + LogReg , data = testResults,
+             labels = labs)
+xyplot(lift1,
+       ylab = "% Eventos Encontrados",
+       xlab =  "% Clientes",
+       lwd = 2,
+       type = "l", auto.key = list(columns = 2))
+```
+
+Tanto observando las curvas Lift, como observando las curvas ROC, parece que la regresión logística es ligeramente mejor. En cualquier caso, los resultados son malos.
+
+# Estrategias para datos desbalanceados.
+
+Usaremos distintas estrategias para ver si conseguimos mejorar los modelos obtenidos.
+
+## Puntos de corte alternativos.
+
+Si usamos un modelo probabilistico, lo habitual es clasificar en función de si la probabilidad estimada es mayor o menor de 0.5. Una forma de aumentar la sensibilidad es cambiar este punto de corte, hay metodos para calcular puntos de corte optimos (podemos optimizar sensibilidad mas especificidad). 
+
+Hagamos esto con los dos modelos ajustados previamente.
+
+### Puntos de corte alternativos para Random Forest.
+```{r, message=FALSE, warning=FALSE}
+rfThresh = coords(rfvalidROC, x = "best", ret="threshold",
+                   best.method="closest.topleft")
+
+rfThreshY = coords(rfvalidROC, x = "best", ret="threshold",
+                    best.method="youden")
+rfThresh
+rfThreshY 
+```
+
+Se han calculado puntos de corte alternativos mediante dos estrategias diferentes, pero ambos coinciden. Clasifiquemos con este punto de corte y veamos que tal funcionan.
+```{r, message=FALSE, warning=FALSE,fig.height=3.5}
+validResults$rfAlt = factor(ifelse(validResults$RF > rfThresh,
+                                   "Yes", "No"))
+testResults$rfAlt = factor(ifelse(testResults$RF > rfThresh,
+                                   "Yes", "No"))
+rfAltvalidCM = confusionMatrix(validResults$rfAlt, validResults$failed_insolvent)
+rfAltTestCM = confusionMatrix(testResults$rfAlt, testResults$failed_insolvent)
+
+plot(rfTestROC, print.thres = c(.5, .10, rfThresh), type = "S",
+     print.thres.pattern = "%.3f (Spec = %.2f, Sens = %.2f)",
+     print.thres.cex = .8, legacy.axes = TRUE, ylim=c(-0.1,1))
+```
+
+ En la curva se muestran los rendimientos de distintos puntos de corte, veamos como mejoramos la sensibilidad en el conjunto test de cero a un medio. 
+
+```{r}
+evaluacion=data.frame(t(rfAltTestCM$byClass[c('Sensitivity','Specificity')]))
+rownames(evaluacion)='rfAlt'
+(evaluaciones=rbind(evaluaciones,evaluacion))
+```
+
+
+### Puntos de corte alternativos para Regresión Logística.
+
+
+
+```{r, message=FALSE, warning=FALSE}
+lrThresh = coords(lrvalidROC, x = "best", ret="threshold",
+                   best.method="closest.topleft")
+lrThreshY = coords(lrvalidROC, x = "best", ret="threshold",
+                    best.method="youden")
+lrThresh
+lrThreshY 
+```
+
+Se han calculado puntos de corte alternativos mediante dos estrategias diferentes, pero ambos coinciden. Clasifiquemos con este punto de corte y veamos que tal funcionan.
+```{r, message=FALSE, warning=FALSE,fig.height=3.5}
+validResults$lrAlt = factor(ifelse(validResults$LogReg > lrThresh, "Yes", "No"))
+testResults$lrAlt = factor(ifelse(testResults$LogReg > lrThresh,"Yes", "No"))
+lrAltvalidCM = confusionMatrix(validResults$lrAlt, validResults$failed_insolvent)
+lrAltTestCM = confusionMatrix(testResults$lrAlt, testResults$failed_insolvent)
+plot(lrTestROC, print.thres = c(.5, .10, lrThresh), type = "S",
+     print.thres.pattern = "%.3f (Spec = %.2f, Sens = %.2f)",
+     print.thres.cex = .8, legacy.axes = TRUE, ylim=c(-0.1,1))
+```
+
+ En la curva se muestran los rendimientos de distintos puntos de corte, veamos como mejoramos la sensibilidad en el conjunto test de 0 a 0.7. 
+
+```{r}
+evaluacion=data.frame(t(lrAltTestCM$byClass[c('Sensitivity','Specificity')]))
+rownames(evaluacion)='lrAlt'
+(evaluaciones=rbind(evaluaciones,evaluacion))
+```
+
+ Para aumentar la sensibilidad, la especificidad ha bajado algo mas del 0.7. No es que sea un buen modelo, pero ya parece aceptable. 
+ 
+# Métodos de muestreo.
+
+Trataremos de construir un conjunto de entrenamiento en el que los datos no estén desbalanceados.
+
+## Downsampling.
+
+Tomamos una muestra aleatoria de la clase mayoritaria con un tamaño igual al tamaño de la clase minoritaria. Uniendo dicha muestra a los datos de la clase minoritaria conseguimos unos datos balanceados.
+
+```{r}
+set.seed(1237)
+downSampled = downSample(training[, -ncol(training)], 
+                         training$failed_insolvent)
+downSampled_valid = downSample(validation[, -ncol(validation)], 
+                         validation$failed_insolvent)
+downSampled_train_valid=rbind(downSampled,downSampled_valid )
+table(downSampled$Class)#ahora se llama class la variable objetivo
+```
+Hemos aplicado esta tecnica para validación y para entrenamiento.
+
+## Upsampling.
+ Tomamos muestras aelatorias con remplazamiento de la clase minoritaria para conseguir datos balanceados.
+
+```{r}
+set.seed(1237)
+upSampled = upSample(training[, -ncol(training)], 
+                     training$failed_insolvent)
+upSampled_valid = upSample(validation[, -ncol(validation)], 
+                     validation$failed_insolvent)
+upSampled_train_valid=rbind(upSampled,upSampled_valid )
+table(upSampled$Class)
+```
+
+## SMOTE: Synthetic Minority Over-sampling TEchnique:
+
+Hace downsampling y upsampling, dependiendo de unas proporciones que podemos elegir (pueden quedar los datos sin balancear del todo). Al hacer upsampling no toma directamente copias de los elementos, si no que mirando k vecinos toma valores similares para las caracteristicas del nuevo individuo. De este modo, los datos generados no son exactamente iguales.
+
+```{r}
+set.seed(1237)
+smoted = SMOTE(failed_insolvent ~ ., data = training)
+smoted_valid = SMOTE(failed_insolvent ~ ., data = validation)
+smoted_train_valid=rbind(smoted,smoted_valid)
+table(smoted$failed_insolvent)
+```
+
+## Funcion evaluacion para modelos.
+Hemos generado varios conjuntos de datos con los que ajustar modelos. Dado que quedan muchas combinaciones por hacer, definiremos una funcion que reciba un modelo y devuelva la especificidad y sensibilidad sobre el conjunto test del modelo, y de predicciones echas cambiando el punto de corte del modelo por uno mejor. Necesitaremos usar el conjunto de validación para calcular dicho punto de corte.
+
+```{r}
+evaluacion=function(modelo,title='modelo',test=testing, validacion=validation,plot_ROC=T){
+  validResult = predict(modelo, validacion, type = "prob")[,1]
+  testResult = predict(modelo, test, type = "prob")[,1]
+  #Medidas sobre validacion y test:
+  validROC = roc(validacion$failed_insolvent, validResult,
+                 levels = rev(levels(validacion$failed_insolvent)))
+  TestROC = roc(test$failed_insolvent, testResult,
+                 levels = rev(levels(test$failed_insolvent)))
+  TestCM = confusionMatrix(predict(modelo, test), 
+                           test$failed_insolvent)
+  validCM = confusionMatrix(predict(modelo, validacion), 
+                           validacion$failed_insolvent)
+  
+  #Devolveremos la sensibilidad y especificidad sobre datos test
+  resultado=data.frame(t(TestCM$byClass[c('Sensitivity','Specificity')]))
+  rownames(resultado)=title
+  
+  #Calculamos nuevo punto de corte
+  Thresh = coords(validROC, x = "best", ret="threshold",
+                   best.method="closest.topleft")
+  
+  validResultAlt = factor(ifelse(validResult > Thresh,
+                                   "Yes", "No"))
+  testResultAlt = factor(ifelse(testResult > Thresh,
+                                   "Yes", "No"))
+  AltvalidCM = confusionMatrix(validResultAlt, validacion$failed_insolvent)
+  AltTestCM = confusionMatrix(testResultAlt, test$failed_insolvent)
+
+  if (plot_ROC){#si lo deseamos, pintamos curva ROC
+    plot(TestROC, print.thres = c(.5, .10, Thresh), type = "S",
+       print.thres.pattern = "%.3f (Spec = %.2f, Sens = %.2f)",
+       print.thres.cex = .8, legacy.axes = TRUE, ylim=c(-0.1,1),main=title)
+  }
+  #A la sensibilidad y especificidad anteriores, les unimos las nuevas
+  resultadoAlt=data.frame(t(AltTestCM$byClass[c('Sensitivity','Specificity')]))
+  rownames(resultadoAlt)=paste(title,'Alt',sep='')
+  return(rbind.data.frame(resultado,resultadoAlt))
+
+}
+```
+
+
+
+## Random Forest con datos balanceados.
+
+### Random Forest con downsampling.
+
+```{r, eval=FALSE}
+set.seed(1410)
+rfDown = train(Class ~ ., data = downSampled,
+              method = "rf",
+              trControl = ctrlcv,
+              ntree = 100,
+              tuneLength=5,
+              metric = "Sens") #Sensitividad
+```
+
+```{r, include=FALSE}
+set.seed(1410)
+rfDown = train(Class ~ ., data = downSampled,
+              method = "rf",
+              trControl = ctrlcv,
+              ntree = 100,
+              do.trace=F,
+              tuneLength=5,
+              metric = "Sens") #Sensitividad
+```
+
+```{r, message=FALSE, warning=FALSE,fig.height=3.5}
+(evaluaciones=rbind(evaluaciones,evaluacion(rfDown,title='rfDown')))
+```
+
+### Random Forest con upsampling.
+
+```{r, eval=FALSE}
+set.seed(1410)
+rfUp = train(Class ~ ., data = upSampled,
+              method = "rf",
+              trControl = ctrlcv,
+              ntree = 100,
+              do.trace=F,
+              tuneLength=5,
+              metric = "Sens") #Sensitividad
+```
+
+```{r, include=FALSE}
+set.seed(1410)
+rfUp = train(Class ~ ., data = upSampled,
+              method = "rf",
+              trControl = ctrlcv,
+              ntree = 100,
+              do.trace=F,
+              tuneLength=5,
+              metric = "Sens") #Sensitividad
+```
+
+```{r, message=FALSE, warning=FALSE,fig.height=3.5}
+(evaluaciones=rbind(evaluaciones,evaluacion(rfUp,title='rfUp')))
+```
+
+
+### Random Forest con Smot.
+
+```{r, eval=FALSE}
+set.seed(1410)
+rfSm = train(failed_insolvent ~ ., data = smoted,
+              method = "rf",
+              trControl = ctrlcv,
+              ntree = 100,
+              do.trace=F,
+              tuneLength=5,
+              metric = "Sens") #Sensitividad
+```
+
+```{r, include=FALSE}
+set.seed(1410)
+rfSm = train(failed_insolvent ~ ., data = smoted,
+              method = "rf",
+              trControl = ctrlcv,
+              ntree = 100,
+              do.trace=F,
+              tuneLength=5,
+              metric = "Sens") #Sensitividad
+```
+
+```{r, message=FALSE, warning=FALSE,fig.height=3.5}
+(evaluaciones=rbind(evaluaciones,evaluacion(rfSm,title='rfSm')))
+```
+
+
+
+
+## Regresión logística con datos balanceados.
+
+### Regresión logística con downsampling.
+
+```{r}
+lrDown = train(Class ~ .,
+              data = downSampled,
+              method = "glm",
+              trControl = ctrlrlog)#indicado previamente
+```
+
+```{r, message=FALSE, warning=FALSE,fig.height=3.5}
+(evaluaciones=rbind(evaluaciones,evaluacion(lrDown,title='lrDown')))
+```
+
+
+### Regresión logística con upsampling.
+```{r}
+lrUp = train(Class ~ .,
+              data = upSampled,
+              method = "glm",
+              trControl = ctrlrlog)#indicado previamente
+```
+
+```{r, message=FALSE, warning=FALSE,fig.height=3.5}
+(evaluaciones=rbind(evaluaciones,evaluacion(lrUp,title='lrUp')))
+```
+
+
+### Regresión logística con smot.
+
+```{r}
+lrSm = train(failed_insolvent ~ .,
+              data = smoted,
+              method = "glm",
+              trControl = ctrlrlog)#indicado previamente
+```
+
+```{r, message=FALSE, warning=FALSE,fig.height=3.5}
+(evaluaciones=rbind(evaluaciones,evaluacion(lrSm,title='lrSm')))
+```
+
+Vemos que ninguno de los modelos consigue mejorar los resultados de forma destacable. Parece que la mejor opción sería elegir uno en el que tanto la sensibilidad como la especificidad se aproximen a 0.7. Además, la regresión logistica da "buenos" resultados, lo cual sumado a su interpretabilidad hace que sea uno de los modelos más interesantes.
