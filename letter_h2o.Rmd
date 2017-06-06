@@ -1,0 +1,318 @@
+---
+title: "ML II:  Trabajo de evaluación de los temas 1,2, 6 y 7"
+author: "Álvaro Sánchez Castañeda"
+date: "26 de mayo de 2017"
+output: md_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Ejercicio 2:
+### Trabajando ahora con todas las letras, es decir, con los 20000 casos del data frame “LetterRecognition”, construir y evaluar un perceptrón multicapas basado en aprendizaje profundo para predecir la variable lettr.
+
+
+## Lectura de datos y librerias.
+
+Carguemos las librerias necesarias para este ejercicio.
+
+```{r, message=FALSE, warning=FALSE}
+library(mlbench)#datos
+library(h2o)#deep learning
+library(caret)
+library(corrplot)#correlaciones
+library(PCAmixdata)#componentes principales
+```
+
+Lectura de los datos.
+
+```{r, message=FALSE, warning=FALSE}
+data("LetterRecognition")
+datos=LetterRecognition
+rm(LetterRecognition)
+head(datos)
+```
+
+
+## Preprocesado y particion train test.
+
+Tomaremos un conjunto test para evaluar el comportamieto de nuestros modelos. A su vez, dado que vamos a trabajar con redes neuronales, tipificaremos los datos (basandonos en los datos train).
+
+```{r}
+#PARTICION TRAIN TEST (CON CARET).
+set.seed(1)
+index <- createDataPartition(datos$lettr, p=0.75, list=FALSE)
+train <- datos[ index,]
+test <- datos[-index,]
+
+#TIPIFICAMOS (CON CARET).
+preProcValues <- preProcess(train, method = c("center","scale"))
+train_processed <- predict(preProcValues, train)
+test_processed <- predict(preProcValues, test)
+```
+
+## Breve análisis exploratiorio.
+
+### Correlaciones.
+```{r}
+R=cor(train_processed[,-1])
+corrplot(R)
+```
+
+Veamos algunos graficos mostrando las variables mas correlacionadas.
+```{r,fig.height=3.5}
+for (i in 1:length(colnames(R))){ 
+  for (j in 1:length(colnames(R))){
+   if (R[i,j]>0.7 & i>j){
+     grafica=ggplot(data = train_processed,aes_string(colnames(R)[i],colnames(R)[j]))+
+       geom_point(alpha=0.025)
+     print(grafica)
+   } 
+    
+  }
+    }
+  
+```
+
+### Análisis de componentes principales
+
+Se ha echo un análisis de componentes principales. Se construiran modelos tanto con las variables originales, como con las transformaciones
+```{r}
+#calculamos componentes principales
+cp<- princomp(train_processed[,-1], cor = TRUE)
+#transformacion de datos de entrenamiento
+train_acp=data.frame(cbind.data.frame(train_processed[,1]
+                           ,predict(cp,train_processed[,-1])))
+colnames(train_acp)[1]='lettr'
+#transformacion de datos test
+test_acp=data.frame(cbind.data.frame(test_processed[,1],
+                          predict(cp,test_processed[,-1])))
+colnames(test_acp)[1]='lettr'
+```
+
+Viendo la proporción de varianza explicada, podemos decidir cuantas variables explicativas tomar para nuestro modelo.
+
+```{r,fig.height=3.5}
+summary(cp)
+plot(cp,col="blue",main="ACP caracteres.") 
+abline(h=1,lwd=2,lty=2,col="red")
+```
+
+
+## Funcion de evaluación.
+
+Construiremos una función que nos devuelva la precisión de un modelo del paquete h2o, evaluando sobre el conjunto test. 
+
+```{r}
+evaluacion_h2o=function(modelo,title='modelo'){
+  cm=h2o.confusionMatrix(modelo,valid = T)
+  medidas=t(data.frame(cm$Error))
+  colnames(medidas)=rownames(cm)
+  medidas=100*(1-medidas)
+  row.names(medidas)=title
+  return(data.frame(medidas))
+}
+```
+
+## Inicialización del servicio h2o.
+
+```{r, include=FALSE}
+localH2O = h2o.init(nthreads = 5)
+```
+
+```{r, eval= FALSE}
+localH2O = h2o.init(nthreads = 5)
+```
+
+
+## Modelos con variables originales.
+
+En primer lugar, pasamos las variables al formato h2o.
+
+```{r, include=FALSE}
+train.hex <- as.h2o(train_processed)
+test.hex<- as.h2o(test_processed)
+```
+
+```{r, eval= FALSE}
+train.hex <- as.h2o(train_processed)
+test.hex<- as.h2o(test_processed)
+```
+
+ Se han realizado diversas busquedas en rejilla para elegír los parámetros de nuestro modelo. Dado el alto coste computacional de estas operaciónes, se han guardado los resultados para evitar tener que ejecutar estas busquedas cada vez que se quiera ejecutar el código. Veamos algunos de los pasos seguidos para la selección de nuestro modelo.
+ 
+### Configuración de capas y regularización.
+
+En primer lugar, se han realizado diversas busquedas en rejilla para determinar la configuración de las capas ocultas a usar y el parametro de regularización Lasso (se han realizado mas bsuquedas de las que aquí se muestran).
+
+```{r, eval= FALSE}
+hidden_search = list(c(200,200),c(500,500), c(500,500,500),c(1000),c(1000,1000))
+l1_search <- c(1e-1,1e-3)
+hyper_params= list(hidden = hidden_search, l1 = l1_search)
+
+
+
+modelo_h2o_grid_2 = h2o.grid("deeplearning",
+                           x = 2:17, y = 1, 
+                           training_frame = train.hex,
+                           validation_frame=test.hex,
+                           distribution="multinomial",
+                           activation = 'RectifierWithDropout',
+                           hyper_params = hyper_params,
+                           nfolds=5, 
+                           score_interval = 2,
+                           epochs = 50,
+                           stopping_rounds = 3,
+                           stopping_tolerance = 0.05,
+                           stopping_metric = "misclassification")
+
+save(train_processed,test_processed,modelo_h2o_grid_2,
+     file="modelo_ho_grid_2.RData")
+```
+
+```{r}
+load(file="modelo_ho_grid_2.RData")
+modelo_h2o_grid_2@summary_table
+```
+
+El mejor modelo es el que tiene dos capas ocultas de mil nodos y $L1=0.001$. El resumen que proporciona h2o ordena los modelos en función de la puntuación que tengan, siendo el primero el mejor.
+
+```{r,fig.height=3.5}
+modelo_h2o_1 <- h2o.loadModel(
+  "C:/Users/AlvaroSanchez91/Desktop/Master Big Data Sevilla/ML2 Machine Learning II/trabajo_MLII_AlvaroSanchezCastanneda/modelo_2-1000/DeepLearning_model_R_1495751705306_1")
+plot(modelo_h2o_1)
+evaluaciones=data.frame(evaluacion_h2o(modelo_h2o_1,'modelo_h2o_1'))#Accuracy.
+evaluaciones['Totals']
+```
+
+Viendo lo anterior, parece buena idea tomar un mayor numero de epocas, y hacer busquedas sobre modelos con muchos nodos con coeficientes de $L1$ mas bajos, también se han buscado otros coeficientes $L2$ (esto no se muestra, pues es analogo a la busqueda anterior). 
+
+### Dropout ratio.
+
+Lo siguiente que se ha echo, ha sido optimizar el coeficiente dropout en capas ocultas.
+
+```{r, eval= FALSE}
+hidden_search = list(c(1000,1000))
+l1_search <- c(1e-5)
+l2_search <- c(1e-5)
+hidden_dropout_ratio_search = list(c(0.25, 0.25),c(0.5, 0.5))
+hyper_params= list(hidden = hidden_search,
+                   l2=l2_search, l1 = l1_search, 
+                   hidden_dropout_ratios=hidden_dropout_ratio_search)
+
+modelo_h2o_grid_8 = h2o.grid("deeplearning",
+                             x = 2:17, y = 1, 
+                             training_frame = train.hex,
+                             validation_frame=test.hex,
+                             distribution="multinomial",
+                             activation = 'RectifierWithDropout',
+                             hyper_params = hyper_params,
+                             nfolds=5,
+                             score_interval = 2,
+                             stopping_rounds = 3,
+                             stopping_tolerance = 0.025,
+                             stopping_metric = "misclassification",
+                             epochs=200)
+```
+
+```{r}
+modelo_h2o_2 <- h2o.loadModel("C:\\Users\\AlvaroSanchez91\\Desktop\\Master Big Data Sevilla\\ML2 Machine Learning II\\trabajo_MLII_AlvaroSanchezCastanneda\\modelo_grid_8\\Grid_DeepLearning_train_processed_model_R_1495969925891_2_model_0")
+load(file="modelo_h2o_grid_8.RData")
+modelo_h2o_grid_8@summary_table
+```
+
+Parece que es mejor reducir la probabilidad dropout, se han buscado otras opciones, pero $0.25$ ha sido la mejor. Veamos como se comporta el modelo obtenido.
+
+```{r,fig.height=3.5}
+plot(modelo_h2o_2)
+evaluaciones=rbind.data.frame( evaluaciones,evaluacion_h2o(modelo_h2o_2,'modelo_h2o_2'))#Accuracy.
+evaluaciones['Totals']
+```
+
+En esta ocasión tenemos una precisión mucho mejor, si usasemos los mismos parámetros pero con dos capas $200$ nodos en las capas ocultas, o con tres de $1000$, obtendríamos resultados similares, quizá seria conveniente quedarse con el modelo mas simple. Otra observación, es que no llegamos a sobreajustar (tal como se muestra en la grafica anterior). 
+
+
+
+## Modelos con componentes principales.
+
+### Cambio de formato de los datos.
+
+```{r, include=FALSE}
+train.hex_acp <- as.h2o(train_acp)
+test.hex_acp<- as.h2o(test_acp)
+```
+
+En el analisis que se hizo antes de comenzar a ajustar modelos, se vio un resumen en el que se indicaba que bastaban diez componentes principales para explicar el noventa por ciento de la varianza, hagamos una primera prueba con los parametros del modelo anterior usando solo estas diez componentes principales. No se entrenaran los modelos, si no que se cargarán y se mostrara el codigo necesario para ajustarlos.
+
+
+
+```{r, eval= FALSE}
+modelo_acp1 <- h2o.deeplearning(
+  x = 2:10, y = 1, 
+  standardize = FALSE,
+  training_frame = train.hex_acp,
+  validation_frame=test.hex_acp,
+  distribution="multinomial",
+  activation = 'RectifierWithDropout',
+  hidden = c(1000, 1000),
+  l1 = 1e-5,
+  l2 = 1e-5,
+  hidden_dropout_ratio = c(0.25, 0.25),
+  input_dropout_ratio = 0.2,
+  epochs = 200,
+  rho = 0.99,
+  epsilon = 1e-8,
+  train_samples_per_iteration = 500)
+```
+
+```{r,fig.height=3.5}
+modelo_acp1 <- h2o.loadModel(
+  "C:\\Users\\AlvaroSanchez91\\Desktop\\Master Big Data Sevilla\\ML2 Machine Learning II\\trabajo_MLII_AlvaroSanchezCastanneda\\modelo_acp1\\DeepLearning_model_R_1495969925891_7")
+plot(modelo_acp1)
+```
+
+
+
+```{r}
+evaluaciones=rbind.data.frame(evaluaciones,evaluacion_h2o(modelo_acp1,'modelo_acp1'))
+evaluaciones['Totals']
+```
+
+Observamos como este modelo no ha dejado de mejorar los resultados a lo largo de las doscientas epocas (iteraciones de entrenamiento). Podríamos aumentar el numero de estas, pero parece ineficiente empezar desde cero, y no aprovechar el ajuste realizado. Hay una manera de hacer esto, indicando en checkpoint la identidad del modelo h2o que queremos seguír entrenando.
+
+```{r, eval= FALSE}
+modelo_acp1_train2 <- h2o.deeplearning(
+  checkpoint= modelo_acp1@model_id,#indicamos la identidad del modelo
+  x = 2:10, y = 1, 
+  standardize = FALSE,
+  training_frame = train.hex_acp,
+  validation_frame=test.hex_acp,
+  distribution="multinomial",
+  activation = 'RectifierWithDropout',
+  hidden = c(1000, 1000),
+  l1 = 1e-5,
+  l2 = 1e-5,
+  hidden_dropout_ratio = c(0.25, 0.25),
+  input_dropout_ratio = 0.2,
+  epochs = 1000,
+  rho = 0.99,
+  epsilon = 1e-8,
+  train_samples_per_iteration = 500)
+```
+
+```{r,fig.height=3.5}
+modelo_acp1_train2 <- h2o.loadModel("C:\\Users\\AlvaroSanchez91\\Desktop\\Master Big Data Sevilla\\ML2 Machine Learning II\\trabajo_MLII_AlvaroSanchezCastanneda\\modelo_acp1_train2\\DeepLearning_model_R_1495969925891_11")
+plot(modelo_acp1_train2)
+```
+
+
+
+```{r}
+evaluaciones=rbind.data.frame(evaluaciones,evaluacion_h2o(modelo_acp1_train2,'modelo_acp1_train2'))
+evaluaciones['Totals']
+```
+
+No hemos llegado a las 1000 epocas que hemos fijado como límite, así que parece que es complicado mejorar mas este modelo. Aúnque hallamos mejorado el anterior resultado, estamos lejos de la precision obtenida con las variables originales, habría que optimizar los parametros de nuevo, o elegir otro numero de componentes principales (puede que hallamos perdido demasiada información).
+
+Se ha intentado hacer una busqueda muy completa (procurando no execederse) usando estas diez componentes principales. En esta busqueda, se ha usado unicamente la función de activación maxout pues hay quien afirma que converge mas rapido que la sigmoide o la tangencial, pero apesar de este cambio, tras muchas horas de calculos se decidió parar el proceso (hubiese sido conveniente usar un conjunto de validación en lugar de validación cruzada). 
