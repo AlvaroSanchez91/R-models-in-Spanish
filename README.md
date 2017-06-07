@@ -20,7 +20,7 @@ two diferent columns to do that).
 
 ## NaiveBayes_LDA
 
- The BreastCancer data from the mlbench package provided tumour instances, the objective is to identify each of a number of benign or malignant classes. In this example we use 
+ The BreastCancer data from the mlbench package provide tumour instances, the objective is to identify each of a number of benign or malignant classes. In this example we use 
 Naive Bayes and linear discriminant analysis.
 
 ## RF_nnet_h2o
@@ -29,7 +29,7 @@ We use the LetterRecognition data from the library mlbench in order to make a mo
 
 ## SVM.
 
-We load the Glass data from the mlbench package, which shows 7 types of glass. Our goal is use Suport Vector Machines models wich allow us to predict these types of glass.
+We load the Glass data from the mlbench package, which shows 7 types of glass. Our goal is use Suport Vector Machines models wich allow us to predict the type of glass.
 
 ## letter_h2o
 
