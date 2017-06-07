@@ -23,7 +23,7 @@ two diferent columns to do that).
 We use the LetterRecognition data from the library mlbench ir order to make a model who allow us to predict characters. Here we use deep learning models, some of the steps are to slow to 
 compute, so some models are saved: modelo_2-1000,modelo_grid_8, modelo_acp1, modelo_acp1_train2, modelo_h2o_grid_8.RData and modelo_ho_grid_2.RData.
 
-##NaiveBayes_LDA
+## NaiveBayes_LDA
 
  The BreastCancer data from the mlbench package provided tumour instances, the objective is to identify each of a number of benign or malignant classes. In this example we use 
 Naive Bayes and linear discriminant analysis.
