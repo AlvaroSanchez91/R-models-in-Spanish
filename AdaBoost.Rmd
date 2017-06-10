@@ -1,0 +1,188 @@
+---
+title: 'ML II: Ejercicio de evaluación.'
+author: "Álvaro Sánchez Castañeda"
+date: "5 de junio de 2017"
+output: md_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#EJERCICIO 1:
+###1. A partir de la base de datos spam de la librería kernlab, construya una muestra de aprendizaje aleatoria formado por el 70% de las instancias, y una muestra de validación formada por el 30% restante.
+###2. Construya un modelo boosting a partir de la muestra de aprendizaje generada para pronosticar la variable type a partir de las restantes variables (utilice la librería adabag).
+###3. Realice predicciones para la muestra de validación y obtenga la matriz de confusión y el porcentaje de observaciones mal clasificadas. Obtenga el margen de las observaciones de la muestra de validación y determine los índices correspondientes a las que han sido mal clasificadas.
+###4. Utilizando validación cruzada con 10 pliegues, obtenga la matriz de confusión y el porcentaje de observaciones mal clasificadas.
+###5. Utilizando la función train de la librería caret, determine los parámetros óptimos dentro del siguiente conjunto:
+###mfinal $\in$ {5,6,7,8,9,10}, maxdepth $\in$ {1,2}, coeflearn $\in$ {Breiman,Zhu}. 
+###Como técnica de validación, utilizar validación cruzada con 3 pliegues.
+
+##Apartado 1.
+###Lectura datos, librerias y preprocesado.
+En esta sección se completará el primer punto del ejercicio, cargarémos los datos (miraremos si es necesario imputar valores perdidos) y los dividiremos en conjuntos de entrenamiento y validación.
+
+###Librerias.
+```{r, message=FALSE, warning=FALSE}
+library(kernlab)#datos
+library(caret)#diversas herramientas ML
+library(plyr)#lo usa caret
+library(adabag)#boosting adabag
+library(ggplot2)#graficas
+library(GGally)#graficas
+```
+
+###Datos.
+```{r}
+data(spam)
+datos=spam
+```
+
+### Valores perdidos.
+```{r}
+sum(apply(is.na(datos),2,sum))
+```
+No tenemos valores perdidos.
+
+###Partición entrenamiento validación.
+Usaremos una función de caret para esta tarea.
+
+```{r}
+set.seed(1)
+train_index=createDataPartition(datos$type, p = .7,list=F)
+train=datos[train_index,]
+valid=datos[-train_index,]
+```
+
+
+
+### Nuve de puntos.
+
+```{r}
+ggpairs(datos, aes(color=type), columns=1:9,
+        upper=list(continuous='points'),axisLabels='none')
+```
+
+Lo habitual seria hacer transformaciones a estas variables, pero, como usaremos modelos construidos a partir de arboles de clasificación, no será necesario.
+
+
+##Apartado 2. 
+###Construya un modelo boosting a partir de la muestra de aprendizaje generada para pronosticar la variable type a partir de las restantes variables (utilice la librería adabag).
+
+En este apartado usaremos los parámetros del modelo por defecto, mas adelante trataremos de buscar buenas combinaciones de estos para mejorar los resultados. 
+
+```{r}
+ada_1=boosting(type~., data=train)
+```
+
+
+
+##Apartado 3.
+### Realice predicciones para la muestra de validación y obtenga la matriz de confusión y el porcentaje de observaciones mal clasificadas. Obtenga el margen de las observaciones de la muestra de validación y determine los índices correspondientes a las que han sido mal clasificadas.
+
+La función predict asociada a esta libreria, nos proporciona directamente la matriz de confusión y el porcentaje de clasificaciones incorrectas. 
+
+```{r}
+pred=predict(ada_1,newdata=valid)
+pred$error
+(mc=pred$confusion)
+```
+Vemos que el modelo es bastante preciso apesar de que no hemos controlado ningún parametro. Calculemos el margen de las observaciones del conjunto de validación.
+
+```{r,fig.height=3}
+marg=margins(pred,valid)
+head(marg$margins)
+```
+
+
+```{r,fig.height=3}
+par(mfrow=c(1,2))
+plot.margins(marg)
+hist(marg$margins,col='lightblue',main='Histogram of margins')
+```
+
+Tenemos unos margenes bastante altos, parece que la mayoria se situan entorno a 0.5. Basandonos en estos margenes, podemos buscar las clasificaciones incorrectas, ya que son aquellas con margen negativo.
+
+```{r}
+which(marg$margins<0)
+```
+
+Por ultimo, al haber usado muchas iteraciones (100 por defecto), sería interesante ver los errores cometidos en cada una de ellas y así controlar un posible sobreajuste.
+
+```{r,fig.height=3}
+plot.errorevol(errorevol(ada_1,valid),errorevol(ada_1,train))
+```
+ EL modelo se ajusta completamente a los datos de entrenamiento, sería conveniente reducir bastante el número de iteraciones (arboles que componen el modelo).
+
+##Apartado 4.
+### Utilizando validación cruzada con 10 pliegues, obtenga la matriz de confusión y el porcentaje de observaciones mal clasificadas.
+
+En esta ocasión reduciremos a diez el numero de iteraciones, ya que podría suponer mucho tiempo para calcular el total de los pliegues si tomamos cien iteraciones (parametro por defecto).
+
+```{r,eval=F}
+ada_2=boosting.cv(type~., data=train,mfinal=10,v=10)
+```
+
+```{r,include==F}
+ada_2=boosting.cv(type~., data=train,mfinal=10,v=10)
+```
+
+Veamos la matriz de confusión, y el error.
+
+```{r}
+(ada_2$confusion)
+(ada_2$error)
+```
+
+Estimamos un error bajo, optimizemos los parametros para ver si somos capaces de reducirlo.
+
+
+##Apartado 5.
+### Utilizando la función train de la librería caret, determine los parámetros óptimos dentro del siguiente conjunto:
+###mfinal $\in$ {5,6,7,8,9,10}, maxdepth $\in$ {1,2}, coeflearn $\in$ {Breiman,Zhu}. 
+###Como técnica de validación, utilizar validación cruzada con 3 pliegues.
+
+```{r, message=FALSE, warning=FALSE}
+grid = expand.grid(mfinal=5:10,maxdepth=c(1,2),coeflearn=c("Breiman","Zhu"))#parametros
+control = trainControl(method='cv',number=3,repeats=1)#validación para optimizacion de parametros
+ada_grid = train(type ~ .,data=train,
+                method='AdaBoost.M1',trControl=control,tuneGrid=grid)
+```
+
+Veamos mediante un grafico los resultados obtenidos.
+```{r,fig.height=3.5}
+plot(ada_grid)
+ada_grid$bestTune
+```
+
+A la vista de los resultados obtenidos, parece interesante aumentar la profindidad de los arboles, y el número de iteraciones. Aquí surge un problema, pensemos que si queremos ajustar el numero de iteraciones, realmente no deberia ser necesario construir un modelo para cada posibilidad, pues deberia ser suficiente con tomar el mas alto deseado y despues quedarnos con las iteraciones que nos interesen. Manualmente lo podemos hacer accediendo a los arboles del modelo y los pesos de los mismos. De momento no complicaremos mas las cosas y simplemente usaremos una rejilla, pero hay otras librerias como xgboost que permiten lidiar mejor con esto.
+
+
+Hagamos una busqueda algo mas amplia que la anterior.
+
+
+```{r, message=FALSE, warning=FALSE}
+grid = expand.grid(mfinal=seq(10,80,5),maxdepth=seq(10,50,5),
+                   coeflearn=c("Breiman","Zhu"))#parametros
+control = trainControl(method='cv',number=3,repeats=1)#validación para optimizacion de parametros
+ada_grid_2 = train(type ~ .,data=train,
+                method='AdaBoost.M1',trControl=control,tuneGrid=grid)
+```
+
+Veamos mediante un grafico los resultados obtenidos.
+```{r,fig.height=3.5}
+plot(ada_grid_2)
+ada_grid_2$bestTune
+```
+
+Veamos que error cometemos al evaluar el resto de los datos usando el modelo construido con los mejores parámetros
+
+```{r}
+ada_3=ada_grid_2$finalModel
+pred=predict(ada_3,newdata=valid)
+(mc=table(pred$class,valid$type))
+precision=sum(diag(mc))/sum(mc)
+(1-precision)
+```
+
+Vemos que no conseguímos aumentar la precisión respecto al primer modelo.

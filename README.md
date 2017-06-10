@@ -3,6 +3,10 @@
 Here we can see some exercises of Machine Learning using R (decision trees, deep learning, boosting,...), and all of it explained in Spanish.
 I recomend reading the .md documents in the web, and download the .Rmd to run it using R.
 
+## AdaBoost
+We use this classic boosting model (better use xgboost) just to see how it works, our goal is to know wether a mail is spam or not. We use 
+the spam data from the Kernlab library.
+
 ## Cluster_PC_Tree
 
 We can see an example of clustering analysis of Crimen.dat. Various techniques of dimensionality reduction are shown in the second part such as PCA, using data prvided by a package of R.
